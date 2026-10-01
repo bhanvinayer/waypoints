@@ -1,0 +1,55 @@
+# ---------- secrets (never commit keys) ----------
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# ---------- WAYPOINTS runtime data ----------
+backend/.data/
+backend/.cache/
+*.sqlite
+*.sqlite3
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---------- Node / Vite ----------
+node_modules/
+frontend/dist/
+dist/
+*.tsbuildinfo
+.vite/
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------- logs & temp ----------
+*.log
+*.tmp
+.tmp/
+
+# ---------- editors & OS ----------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Claude Code local state ----------
+.claude/settings.local.json

@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from "react";
-import { MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from "react-leaflet";
+import { useEffect, useMemo, useState } from "react";
+import { MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import type { ExperienceNode, JourneyResponse, SliceNode, Tone, Waypoint } from "@/lib/types";
 import { fmtClock } from "@/lib/time";
@@ -53,7 +53,9 @@ function AutoSize() {
 function Fit({ points, signature }: { points: [number, number][]; signature: string }) {
   const map = useMap();
   useEffect(() => {
-    if (points.length > 1) map.fitBounds(L.latLngBounds(points), { padding: [48, 48], animate: false });
+    const desktop = window.matchMedia("(min-width: 1024px)").matches;
+    // leave room for the time slider that floats over the bottom of the map on desktop
+    if (points.length > 1) map.fitBounds(L.latLngBounds(points), { paddingTopLeft: [56, 56], paddingBottomRight: [56, desktop ? 230 : 56], animate: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature, map]);
   return null;
@@ -65,6 +67,48 @@ function Focus({ target }: { target: [number, number] | null }) {
     if (target) map.flyTo(target, Math.max(map.getZoom(), 11), { duration: 0.8 });
   }, [target, map]);
   return null;
+}
+
+/** Stops that would sit on top of each other (several sights in one city) are fanned out, joined to their true spot by a dotted line. */
+function SpreadPins({ waypoints, slice, selectedId, onSelect }: { waypoints: Waypoint[]; slice?: Map<string, SliceNode>; selectedId: string | null; onSelect: (id: string) => void }) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+  useMapEvents({ zoomend: () => setZoom(map.getZoom()) });
+  const placed = useMemo(() => {
+    const taken: L.Point[] = [];
+    return waypoints.map((w) => {
+      const origin = L.latLng(w.latitude, w.longitude);
+      const p = map.latLngToLayerPoint(origin);
+      let q = p;
+      let k = 0;
+      while (taken.some((o) => o.distanceTo(q) < 40) && k < 14) {
+        const ang = ((k * 62 - 90) * Math.PI) / 180;
+        const r = 46 + Math.floor(k / 6) * 26;
+        q = L.point(p.x + Math.cos(ang) * r, p.y + Math.sin(ang) * r);
+        k++;
+      }
+      taken.push(q);
+      return { w, origin, pos: k ? map.layerPointToLatLng(q) : origin, shifted: k > 0 };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoom, waypoints, map]);
+  return (
+    <>
+      {placed.filter((x) => x.shifted).map(({ w, origin, pos }) => (
+        <Polyline key={`l${w.id}`} positions={[origin, pos]} pathOptions={{ color: "#10211D", weight: 1.5, opacity: 0.45, dashArray: "2 4" }} interactive={false} />
+      ))}
+      {placed.map(({ w, pos }) => {
+        const s = slice?.get(w.id);
+        const tone: Tone = s ? s.tone : w.tone;
+        const opacity = s && tone === "red" ? 0.3 : 1;
+        return (
+          <Marker key={w.id} position={pos} icon={pinIcon(w, tone, selectedId === w.id, opacity, !slice)} eventHandlers={{ click: () => onSelect(w.id) }} zIndexOffset={1000 + (selectedId === w.id ? 500 : 0)}>
+            <Tooltip direction="top" offset={[0, -18]} className="wp-tip">{w.name}</Tooltip>
+          </Marker>
+        );
+      })}
+    </>
+  );
 }
 
 export function MapView({ journey, selectedId, onSelect, slice, extra = [], className }: Props) {
@@ -95,10 +139,9 @@ export function MapView({ journey, selectedId, onSelect, slice, extra = [], clas
       attributionControl
     >
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        subdomains="abcd"
-        maxZoom={19}
+        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+        attribution="Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ"
+        maxZoom={16}
       />
       <AutoSize />
       <Fit points={fitPoints} signature={journey.journey_id} />
@@ -135,16 +178,7 @@ export function MapView({ journey, selectedId, onSelect, slice, extra = [], clas
         );
       })}
 
-      {journey.waypoints.map((w) => {
-        const s = slice?.get(w.id);
-        const tone: Tone = s ? s.tone : w.tone;
-        const opacity = s && tone === "red" ? 0.3 : 1;
-        return (
-          <Marker key={w.id} position={[w.latitude, w.longitude]} icon={pinIcon(w, tone, selectedId === w.id, opacity, !slice)} eventHandlers={{ click: () => onSelect(w.id) }} zIndexOffset={1000 + (selectedId === w.id ? 500 : 0)}>
-            <Tooltip direction="top" offset={[0, -18]} className="wp-tip">{w.name}</Tooltip>
-          </Marker>
-        );
-      })}
+      <SpreadPins waypoints={journey.waypoints} slice={slice} selectedId={selectedId} onSelect={(id) => onSelect(id)} />
     </MapContainer>
   );
 }

@@ -135,7 +135,7 @@ export function PlanForm() {
         <button
           type="button"
           onClick={() => { setOrigin(destination); setDestination(origin); }}
-          className="absolute right-3 top-[58px] z-10 grid h-9 w-9 place-items-center rounded-full border border-line bg-white text-ink-500 shadow-sm transition hover:text-accent active:rotate-180"
+          className="absolute right-3 top-[66px] z-10 grid h-9 w-9 place-items-center rounded-full border border-line bg-white text-ink-500 shadow-sm transition hover:text-accent active:rotate-180"
           aria-label="Swap origin and destination"
         >
           <ArrowUpDown className="h-4 w-4" />

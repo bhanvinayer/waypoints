@@ -34,8 +34,8 @@ export default function HomePage() {
               <div className="chip mb-5 !border-accent-100 !bg-accent-50 !text-accent-600">
                 <span className="h-1.5 w-1.5 rounded-full bg-accent" /> SerpApi India Hackathon · Travel &amp; Local Discovery
               </div>
-              <h1 className="font-display text-[44px] font-extrabold leading-[0.98] tracking-tight sm:text-6xl lg:text-[68px]">
-                Your route is more than a <span className="relative whitespace-nowrap text-accent">line on a map.<svg aria-hidden viewBox="0 0 300 12" className="absolute -bottom-2 left-0 h-3 w-full" preserveAspectRatio="none"><path d="M2 8 C 60 1, 120 12, 190 5 S 270 3, 298 7" stroke="#E8501C" strokeWidth="3.5" fill="none" strokeLinecap="round" opacity=".45" /></svg></span>
+              <h1 className="font-display text-[42px] font-extrabold leading-[1.02] tracking-tight [text-wrap:balance] sm:text-6xl lg:text-[64px]">
+                Your route is more than a <span className="relative text-accent">line on a map.<svg aria-hidden viewBox="0 0 300 12" className="absolute -bottom-2 left-0 h-3 w-full" preserveAspectRatio="none"><path d="M2 8 C 60 1, 120 12, 190 5 S 270 3, 298 7" stroke="#E8501C" strokeWidth="3.5" fill="none" strokeLinecap="round" opacity=".45" /></svg></span>
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink-600">
                 WAYPOINTS discovers experiences that actually fit your journey — based on where you'll be, when you'll arrive, what you love, and what happens if plans change.

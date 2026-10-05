@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
+import { Landmark, Music, Soup, Sunset, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { fmtClock } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
-interface Pin { name: string; kind: string; open: [number, number]; x: number; y: number; emoji: string }
+interface Pin { name: string; kind: string; open: [number, number]; x: number; y: number; Icon: LucideIcon; above?: boolean }
 
 // Illustrative only (clearly labelled): five experiences with different opening windows along one route.
 const PINS: Pin[] = [
-  { name: "Heritage fort", kind: "9 AM – 5:30 PM", open: [540, 1050], x: 14, y: 60, emoji: "🏰" },
-  { name: "Street-food stall", kind: "6 AM – 11 AM", open: [360, 660], x: 33, y: 28, emoji: "🥟" },
-  { name: "Highway thali", kind: "12 – 3 PM", open: [720, 900], x: 52, y: 66, emoji: "🍛" },
-  { name: "Sunset viewpoint", kind: "5 – 6:15 PM", open: [1020, 1095], x: 72, y: 30, emoji: "🌇" },
-  { name: "Live folk music", kind: "7:30 – 9:30 PM", open: [1170, 1290], x: 88, y: 62, emoji: "🎶" },
+  { name: "Heritage fort", kind: "9 AM – 5:30 PM", open: [540, 1050], x: 12, y: 62, Icon: Landmark },
+  { name: "Street-food stall", kind: "6 – 11 AM", open: [360, 660], x: 31, y: 30, Icon: Soup, above: true },
+  { name: "Highway thali", kind: "12 – 3 PM", open: [720, 900], x: 51, y: 64, Icon: UtensilsCrossed },
+  { name: "Sunset viewpoint", kind: "5 – 6:15 PM", open: [1020, 1095], x: 71, y: 30, Icon: Sunset, above: true },
+  { name: "Live folk music", kind: "7:30 – 9:30 PM", open: [1170, 1290], x: 89, y: 62, Icon: Music },
 ];
 const START = 360;
 const END = 1380;
@@ -47,12 +48,14 @@ export function HeroViz() {
           const open = t >= p.open[0] && t <= p.open[1];
           return (
             <div key={p.name} className="absolute -translate-x-1/2 -translate-y-1/2 text-center" style={{ left: `${p.x}%`, top: `${p.y}%` }}>
-              <div className={cn("mx-auto grid h-11 w-11 place-items-center rounded-full border-2 text-xl transition-all duration-500", open ? "scale-110 border-ok bg-ok/25 shadow-[0_0_0_6px_rgba(30,158,106,.18)]" : "scale-90 border-white/15 bg-white/5 opacity-40 grayscale")}>
-                {p.emoji}
-              </div>
-              <div className={cn("mt-1.5 hidden whitespace-nowrap text-[10px] font-semibold leading-tight transition-opacity duration-500 sm:block", open ? "opacity-100" : "opacity-40")}>
-                {p.name}
-                <div className="font-medium text-white/50">{p.kind}</div>
+              <div className={cn("flex flex-col items-center", p.above && "flex-col-reverse")}>
+                <div className={cn("grid h-11 w-11 place-items-center rounded-full border-2 transition-all duration-500", open ? "scale-110 border-ok bg-ok text-white shadow-[0_0_0_6px_rgba(30,158,106,.22)]" : "scale-90 border-white/15 bg-night text-white/35")}>
+                  <p.Icon className="h-5 w-5" />
+                </div>
+                <div className={cn("mx-1 hidden whitespace-nowrap rounded-lg bg-night/90 px-2 py-1 text-[10px] font-semibold leading-tight transition-opacity duration-500 sm:block", p.above ? "mb-2" : "mt-2", open ? "opacity-100" : "opacity-45")}>
+                  {p.name}
+                  <div className="font-medium text-white/50">{p.kind}</div>
+                </div>
               </div>
             </div>
           );

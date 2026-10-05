@@ -50,27 +50,30 @@ function StopRow({ s, side }: { s: StressStop; side: "before" | "after" }) {
 function Verdict({ r }: { r: StressResult }) {
   const survived = r.verdict === "SURVIVED";
   const recovered = r.outcome === "RECOVERED";
-  const tone = survived ? "ok" : recovered ? "ok" : "bad";
+  const partial = r.outcome === "PARTIALLY_RECOVERED";
+  const good = survived || recovered;
   const Icon = survived ? Shield : recovered ? Wrench : ShieldAlert;
+  const title = survived ? "YOUR PLAN SURVIVED" : recovered ? "PLAN RECOVERED" : partial ? "PARTIALLY RECOVERED" : "PLAN BREAK DETECTED";
   return (
-    <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className={cn("rounded-3xl p-5 md:p-6", tone === "ok" ? "bg-ok-50 text-ok" : "bg-bad-50 text-bad")}>
+    <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className={cn("rounded-3xl p-5 md:p-6", good ? "bg-ok-50" : "bg-bad-50")}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className={cn("grid h-12 w-12 place-items-center rounded-2xl text-white", tone === "ok" ? "bg-ok" : "bg-bad")}><Icon className="h-6 w-6" /></span>
+          <span className={cn("grid h-12 w-12 place-items-center rounded-2xl text-white", good ? "bg-ok" : "bg-bad")}><Icon className="h-6 w-6" /></span>
           <div>
-            <div className="text-[11px] font-extrabold uppercase tracking-[0.14em] opacity-80">{r.label}</div>
-            <div className="font-display text-2xl font-extrabold leading-tight md:text-3xl">{survived ? "YOUR PLAN SURVIVED" : "PLAN BREAK DETECTED"}</div>
+            <div className={cn("text-[11px] font-extrabold uppercase tracking-[0.14em]", good ? "text-ok" : "text-bad")}>{r.label}</div>
+            <div className={cn("font-display text-2xl font-extrabold leading-tight md:text-3xl", good ? "text-ok" : "text-bad")}>{title}</div>
           </div>
         </div>
         <ProvenanceChip provenance="simulated" />
       </div>
-      {!survived && r.recovery && (
-        <div className="mt-3 flex items-center gap-2 font-display text-lg font-bold text-ink">
-          <Wrench className={cn("h-5 w-5", recovered ? "text-ok" : "text-warn")} />
-          {recovered ? "PLAN RECOVERED" : r.outcome === "PARTIALLY_RECOVERED" ? "PARTIALLY RECOVERED" : "NOT FULLY RECOVERABLE"}
+      {!survived && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] font-semibold">
+          <span className="rounded-full bg-bad px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wider text-white">Break detected</span>
+          <span className="text-ink-700">{r.broken} stop{r.broken === 1 ? "" : "s"} no longer fit{r.broken === 1 ? "s" : ""}</span>
+          {r.recovery && <><ArrowRight className="h-4 w-4 text-ink-400" /><span className="rounded-full bg-ok px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wider text-white">{recovered ? "Recovered" : partial ? "Partly recovered" : "Not recoverable"}</span><span className="text-ink-700">{r.recovery.experiences_preserved} of {r.recovery.experiences_total} experiences kept</span></>}
         </div>
       )}
-      <p className="mt-2 max-w-3xl text-[14px] leading-relaxed text-ink-700">{r.explanation}</p>
+      <p className="mt-3 max-w-3xl text-[14px] leading-relaxed text-ink-700">{r.explanation}</p>
       <p className="mt-2 text-[11.5px] text-ink-500">{r.explanation_engine === "groq" ? "Explained by an open-source model on Groq" : "Explained by deterministic rules"}. Deterministic scenario simulation over current search data — not a prediction of the future.</p>
     </motion.div>
   );
@@ -127,7 +130,8 @@ export default function StressPage() {
   const r = sim.data;
   const err = (sim.error as ApiError | null) ?? (apply.error as ApiError | null);
   const rec = r?.recovery;
-  const chart = r?.stops.map((s) => ({ name: s.name.length > 16 ? s.name.slice(0, 15) + "…" : s.name, before: Math.max(0, s.before_slack_min ?? 0), after: s.after_tone === "red" ? 0 : Math.max(0, s.after_slack_min ?? 0), red: s.after_tone === "red" })) ?? [];
+  const CAP = 120; // open-all-day places have hours of slack; cap so tight windows stay readable
+  const chart = r?.stops.map((s) => ({ name: s.name.length > 14 ? s.name.slice(0, 13) + "…" : s.name, before: Math.min(CAP, Math.max(0, s.before_slack_min ?? CAP)), after: s.after_tone === "red" ? 0 : Math.min(CAP, Math.max(0, s.after_slack_min ?? CAP)), red: s.after_tone === "red" })) ?? [];
   const selectedStop = stopId ?? j.waypoints[0]?.id ?? null;
 
   return (
@@ -271,17 +275,17 @@ export default function StressPage() {
 
                   <section className="card p-4 md:p-6">
                     <h3 className="font-display text-xl font-bold">Time buffer per stop</h3>
-                    <p className="text-[13px] text-ink-500">Minutes of slack before each stop's window closes. Broken stops drop to zero. <ProvenanceChip provenance="simulated" compact /></p>
+                    <p className="text-[13px] text-ink-500">Minutes of slack before each stop's window closes (capped at 2 h). Broken stops drop to zero. <ProvenanceChip provenance="simulated" compact /></p>
                     <div className="mt-4 h-60" role="img" aria-label="Bar chart of time buffer per stop before and after the disruption">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chart} margin={{ top: 8, right: 8, left: -18, bottom: 0 }} barCategoryGap={18}>
                           <CartesianGrid vertical={false} stroke="#E7E0D3" />
                           <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#5B6F69" }} tickLine={false} axisLine={false} interval={0} />
-                          <YAxis tick={{ fontSize: 11, fill: "#5B6F69" }} tickLine={false} axisLine={false} unit="m" />
+                          <YAxis tick={{ fontSize: 11, fill: "#5B6F69" }} tickLine={false} axisLine={false} unit="m" domain={[0, CAP]} ticks={[0, 30, 60, 90, 120]} />
                           <Tooltip cursor={{ fill: "rgba(16,33,29,.05)" }} contentStyle={{ borderRadius: 12, border: "1px solid #E7E0D3", fontSize: 12 }} />
                           <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
-                          <Bar dataKey="before" name="Before" fill="#B6C1BD" radius={[6, 6, 0, 0]} />
-                          <Bar dataKey="after" name="After disruption" radius={[6, 6, 0, 0]}>
+                          <Bar dataKey="before" name="Before" fill="#B6C1BD" radius={[6, 6, 0, 0]} isAnimationActive={false} />
+                          <Bar dataKey="after" name="After disruption" radius={[6, 6, 0, 0]} isAnimationActive={false}>
                             {chart.map((c, i) => <Cell key={i} fill={c.red ? "#D3402F" : "#E8501C"} />)}
                           </Bar>
                         </BarChart>

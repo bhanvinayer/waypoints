@@ -58,7 +58,7 @@
 /* ---------- Leaflet ---------- */
 .leaflet-container {
   font-family: Inter, system-ui, sans-serif;
-  background: #eae6dc;
+  background: #e9ecec;
   outline: none;
 }
 .leaflet-control-attribution {

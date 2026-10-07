@@ -1,79 +1,208 @@
 import { useEffect, useMemo, useState } from "react";
-import { Landmark, Music, Soup, Sunset, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { fmtClock } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
-interface Pin { name: string; kind: string; open: [number, number]; x: number; y: number; Icon: LucideIcon; above?: boolean }
-
-// Illustrative only (clearly labelled): five experiences with different opening windows along one route.
-const PINS: Pin[] = [
-  { name: "Heritage fort", kind: "9 AM – 5:30 PM", open: [540, 1050], x: 12, y: 62, Icon: Landmark },
-  { name: "Street-food stall", kind: "6 – 11 AM", open: [360, 660], x: 31, y: 30, Icon: Soup, above: true },
-  { name: "Highway thali", kind: "12 – 3 PM", open: [720, 900], x: 51, y: 64, Icon: UtensilsCrossed },
-  { name: "Sunset viewpoint", kind: "5 – 6:15 PM", open: [1020, 1095], x: 71, y: 30, Icon: Sunset, above: true },
-  { name: "Live folk music", kind: "7:30 – 9:30 PM", open: [1170, 1290], x: 89, y: 62, Icon: Music },
+// Illustrative journey thread — Delhi → Jaipur corridor
+// 5 stops with different temporal windows
+const STOPS = [
+  { name: "Delhi", order: 0, t: 480,  open: [0, 9999] as [number, number],    kind: "origin" },
+  { name: "Chandni Chowk", order: 1, t: 570,  open: [540, 840] as [number, number],   kind: "stop" },
+  { name: "Neemrana Fort", order: 2, t: 720,  open: [600, 1050] as [number, number],  kind: "stop" },
+  { name: "Highway Dhaba", order: 3, t: 810,  open: [660, 960] as [number, number],   kind: "stop" },
+  { name: "Jaipur", order: 4, t: 1200, open: [0, 9999] as [number, number],    kind: "dest" },
 ];
-const START = 360;
-const END = 1380;
 
-export function HeroViz() {
-  const [t, setT] = useState(11 * 60);
-  const reduce = useMemo(() => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches, []);
+const START = 360;   // 6 AM
+const END   = 1380;  // 11 PM
 
-  useEffect(() => {
-    if (reduce) return;
-    const id = setInterval(() => setT((v) => (v + 6 > END ? START : v + 6)), 70);
-    return () => clearInterval(id);
-  }, [reduce]);
-
-  const pct = ((t - START) / (END - START)) * 100;
-  const openCount = PINS.filter((p) => t >= p.open[0] && t <= p.open[1]).length;
+/** Minimal static map of Delhi–Jaipur corridor */
+function CorridorMap({ currentTime }: { currentTime: number }) {
+  const stops = STOPS;
 
   return (
-    <div className="card relative overflow-hidden bg-night p-4 text-white md:p-6" aria-label="Illustration: the same route at different times of day">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <div className="eyebrow !text-white/50">The Temporal Experience Graph</div>
-          <div className="font-display text-lg font-bold md:text-xl">The same route is a different place at {fmtClock(t, { short: true })}</div>
-        </div>
-        <div className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold tnum">{openCount} / {PINS.length} fit</div>
-      </div>
+    <div className="relative w-full h-full bg-[#0B0B0B] overflow-hidden">
+      {/* SVG route layer */}
+      <svg
+        viewBox="0 0 400 220"
+        className="absolute inset-0 w-full h-full"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        {/* Background grid — subtle infrastructure feel */}
+        <line x1="0" y1="55" x2="400" y2="55" stroke="#111" strokeWidth="0.5" />
+        <line x1="0" y1="110" x2="400" y2="110" stroke="#111" strokeWidth="0.5" />
+        <line x1="0" y1="165" x2="400" y2="165" stroke="#111" strokeWidth="0.5" />
+        <line x1="100" y1="0" x2="100" y2="220" stroke="#111" strokeWidth="0.5" />
+        <line x1="200" y1="0" x2="200" y2="220" stroke="#111" strokeWidth="0.5" />
+        <line x1="300" y1="0" x2="300" y2="220" stroke="#111" strokeWidth="0.5" />
 
-      <div className="relative h-[190px] md:h-[230px]">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
-          <path d="M2 70 C 12 70, 10 50, 20 46 S 30 30, 40 44 S 50 76, 60 58 S 70 30, 80 38 S 92 66, 98 40" fill="none" stroke="rgba(255,255,255,.16)" strokeWidth="1.6" vectorEffect="non-scaling-stroke" strokeLinecap="round" />
-          <path d="M2 70 C 12 70, 10 50, 20 46 S 30 30, 40 44 S 50 76, 60 58 S 70 30, 80 38 S 92 66, 98 40" fill="none" stroke="#E8501C" strokeWidth="2" strokeDasharray="1 7" vectorEffect="non-scaling-stroke" strokeLinecap="round" className="wp-route-flow" />
-        </svg>
-        {PINS.map((p) => {
-          const open = t >= p.open[0] && t <= p.open[1];
+        {/* Route path */}
+        <path
+          d="M 30,110 C 60,100 80,80 110,90 S 160,120 200,110 S 260,80 290,90 S 340,110 370,120"
+          fill="none"
+          stroke="#1A1A1A"
+          strokeWidth="6"
+          strokeLinecap="round"
+        />
+        <path
+          d="M 30,110 C 60,100 80,80 110,90 S 160,120 200,110 S 260,80 290,90 S 340,110 370,120"
+          fill="none"
+          stroke="#2A2A2A"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+
+        {/* Stop nodes */}
+        {[
+          { x: 30, y: 110, order: 0, name: "Delhi",    t: 480 },
+          { x: 110, y: 90, order: 1, name: "Chandni",  t: 570 },
+          { x: 200, y: 110, order: 2, name: "Neemrana", t: 720 },
+          { x: 290, y: 90, order: 3, name: "Dhaba",    t: 810 },
+          { x: 370, y: 120, order: 4, name: "Jaipur",   t: 1200 },
+        ].map((stop) => {
+          const stopDef = STOPS.find((s) => s.order === stop.order)!;
+          const isActive = currentTime >= stop.t && currentTime <= stop.t + 120;
+          const isPast = currentTime > stop.t + 120;
+          const isOpen = currentTime >= stopDef.open[0] && currentTime <= stopDef.open[1];
+          const isOriginDest = stop.order === 0 || stop.order === 4;
+
           return (
-            <div key={p.name} className="absolute -translate-x-1/2 -translate-y-1/2 text-center" style={{ left: `${p.x}%`, top: `${p.y}%` }}>
-              <div className={cn("flex flex-col items-center", p.above && "flex-col-reverse")}>
-                <div className={cn("grid h-11 w-11 place-items-center rounded-full border-2 transition-all duration-500", open ? "scale-110 border-ok bg-ok text-white shadow-[0_0_0_6px_rgba(30,158,106,.22)]" : "scale-90 border-white/15 bg-night text-white/35")}>
-                  <p.Icon className="h-5 w-5" />
-                </div>
-                <div className={cn("mx-1 hidden whitespace-nowrap rounded-lg bg-night/90 px-2 py-1 text-[10px] font-semibold leading-tight transition-opacity duration-500 sm:block", p.above ? "mb-2" : "mt-2", open ? "opacity-100" : "opacity-45")}>
-                  {p.name}
-                  <div className="font-medium text-white/50">{p.kind}</div>
-                </div>
-              </div>
-            </div>
+            <g key={stop.order}>
+              {/* Connection from route to label */}
+              {stop.order === 1 && (
+                <line x1={stop.x} y1={stop.y} x2={stop.x} y2={stop.y - 24} stroke="#1E1E1E" strokeWidth="1" />
+              )}
+              {stop.order === 3 && (
+                <line x1={stop.x} y1={stop.y} x2={stop.x} y2={stop.y - 24} stroke="#1E1E1E" strokeWidth="1" />
+              )}
+
+              {/* Node circle */}
+              <circle
+                cx={stop.x}
+                cy={stop.y}
+                r={isOriginDest ? 5 : 8}
+                fill={
+                  isActive      ? "#E8651A" :
+                  isPast        ? (isOpen ? "#1A3325" : "#2D1515") :
+                  isOriginDest  ? "#FFFFFF" : "#111111"
+                }
+                stroke={
+                  isActive ? "#E8651A" :
+                  isOpen ? "#22C55E" : "#2A2A2A"
+                }
+                strokeWidth="1.5"
+              />
+
+              {/* Order number */}
+              {!isOriginDest && (
+                <text
+                  x={stop.x}
+                  y={stop.y + 1}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill={isActive ? "#FFFFFF" : isOpen ? "#22C55E" : "#383838"}
+                  fontSize="8"
+                  fontWeight="700"
+                  fontFamily="Inter, monospace"
+                >
+                  {stop.order}
+                </text>
+              )}
+
+              {/* Name label */}
+              <text
+                x={stop.x}
+                y={stop.order % 2 === 0 ? stop.y + 18 : stop.y - 16}
+                textAnchor="middle"
+                fill={isActive ? "#E8651A" : "#505050"}
+                fontSize="7"
+                fontWeight="600"
+                fontFamily="Inter, sans-serif"
+                letterSpacing="0.06em"
+                style={{ textTransform: "uppercase" }}
+              >
+                {stop.name.toUpperCase()}
+              </text>
+            </g>
           );
         })}
+      </svg>
+
+      {/* Time indicator */}
+      <div className="absolute top-3 right-3 flex items-center gap-2">
+        <span className="tnum font-mono text-[13px] font-bold text-white bg-[rgba(0,0,0,0.7)] px-2.5 py-1 border border-[#1E1E1E]">
+          {fmtClock(currentTime)}
+        </span>
       </div>
 
-      <div className="relative mt-2">
-        <div className="h-1.5 rounded-full bg-white/10">
-          <div className="h-full rounded-full bg-accent transition-[width] duration-100" style={{ width: `${pct}%` }} />
-        </div>
-        <div className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ left: `${pct}%` }}>
-          <div className="h-4 w-4 rounded-full border-[3px] border-white bg-accent shadow-glow" />
-        </div>
-        <div className="mt-3 flex justify-between text-[10px] font-semibold uppercase tracking-wider text-white/40">
-          {["6 AM", "10 AM", "2 PM", "6 PM", "10 PM"].map((l) => <span key={l}>{l}</span>)}
-        </div>
+      {/* Open count */}
+      <div className="absolute bottom-3 left-3">
+        {(() => {
+          const openCount = STOPS.filter(
+            s => s.kind === "stop" && currentTime >= s.open[0] && currentTime <= s.open[1]
+          ).length;
+          return (
+            <span className="text-[10px] font-bold text-graphite-200 bg-[rgba(0,0,0,0.6)] px-2 py-1 border border-[#1E1E1E]">
+              {openCount}/{STOPS.filter(s => s.kind === "stop").length} OPEN
+            </span>
+          );
+        })()}
       </div>
-      <p className="mt-3 text-[11px] text-white/45">Illustrative example — in the app every window comes from Google Maps hours and events for your actual date.</p>
+    </div>
+  );
+}
+
+/**
+ * HeroViz — static demo of temporal map visualization.
+ * Replaces old sky-gradient animation with navigation-system aesthetic.
+ * Auto-advances through the journey day.
+ */
+export function HeroViz() {
+  const [t, setT] = useState(720); // start at noon
+  const [dragging, setDragging] = useState(false);
+
+  // Auto-advance
+  useEffect(() => {
+    if (dragging) return;
+    const id = setInterval(() => {
+      setT((prev) => {
+        const next = prev + 10;
+        return next > END ? START : next;
+      });
+    }, 180);
+    return () => clearInterval(id);
+  }, [dragging]);
+
+  return (
+    <div className="sys-panel overflow-hidden select-none">
+      {/* Map canvas */}
+      <div className="h-40 relative">
+        <CorridorMap currentTime={t} />
+      </div>
+
+      {/* Timeline scrubber */}
+      <div className="border-t border-[#1E1E1E] px-3 py-2.5">
+        <div className="flex items-center gap-3">
+          <span className="eyebrow shrink-0">PREVIEW</span>
+          <input
+            type="range"
+            className="wp-range flex-1"
+            min={START}
+            max={END}
+            step={10}
+            value={t}
+            style={{ ["--p" as string]: `${((t - START) / (END - START)) * 100}%` }}
+            onChange={(e) => setT(Number(e.target.value))}
+            onMouseDown={() => setDragging(true)}
+            onMouseUp={() => setDragging(false)}
+            onTouchStart={() => setDragging(true)}
+            onTouchEnd={() => setDragging(false)}
+            aria-label="Preview time of day"
+          />
+        </div>
+        <p className="mt-1 text-[9.5px] text-graphite-300">
+          Drag to preview how stop availability changes · <span className="text-graphite-200">illustrative</span>
+        </p>
+      </div>
     </div>
   );
 }

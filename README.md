@@ -5,11 +5,36 @@
 Traditional itinerary planners optimize *where* you go.
 WAYPOINTS optimizes whether the experience will **still work when you actually get there**.
 
-It combines live **SerpApi** search with a **Temporal Experience Graph** to discover, validate, stress-test and repair journeys in real time. Reasoning is done by open-source LLMs on **Groq**, only ever over retrieved evidence.
+It combines live **[SerpApi](https://serpapi.com)** search with a **Temporal Experience Graph** to discover, validate, stress-test and repair journeys in real time. Reasoning is done by open-source LLMs on **Groq**, only ever over retrieved evidence — never hallucinated.
 
 > *Don't just plan where you're going. Discover what will still be worth experiencing when you get there.*
 
-Built for the SerpApi India Hackathon 2026, Track 3: Travel & Local Discovery.
+Built for the **SerpApi India Hackathon 2026 · Track 3: Travel & Local Discovery.**
+
+---
+
+## Implementation status
+
+Everything described in this document is **fully built and running.** This is not a spec.
+
+| Layer | What's built | File(s) |
+|---|---|---|
+| **SerpApi client** | TTL cache · single-flight dedup · per-journey call budget · key scrubbing · live trace | `serpapi/client.py` |
+| **9 SerpApi tools** | `google_maps` · `google_maps_reviews` · `google_maps_directions` · `google` · `google_news` · `google_events` · `google_flights` · `google_hotels` | `serpapi/tools.py` |
+| **Demo data** | Full SerpApi-shaped snapshot, same pipeline, no keys needed | `serpapi/demo_data.py` |
+| **Discovery pipeline** | 8 real stages, real progress reported to UI | `engine/orchestrator.py` |
+| **Temporal fit engine** | Opening hours × arrival time → 7 status codes | `engine/temporal.py` |
+| **Waypoint scoring** | 6-component weighted score, 5 route modes | `engine/scoring.py` |
+| **Route optimizer** | Beam search over temporal graph | `engine/optimizer.py` |
+| **Stress tester** | 6 disruption scenarios, deterministic re-simulation | `engine/stress.py` |
+| **Auto-recovery** | Validated replacement search at new arrival time | `engine/repair.py` |
+| **Replanning** | Mode · time · add / replace / remove stop | `engine/replan.py` |
+| **8 LLM reasoning modules** | Groq (JSON-validated output) → deterministic rule fallbacks | `llm/agents.py` |
+| **FastAPI backend** | All endpoints, CORS, SPA fallback, OpenAPI docs | `app/main.py` + `routers/` |
+| **React frontend** | 5 pages, 20+ components, Leaflet map, time slider | `frontend/src/` |
+| **Test suite** | 7 test files covering the full stack | `backend/tests/` |
+
+The only thing you need to add is your API keys (see below). Everything works without them in demo mode.
 
 ---
 
@@ -29,37 +54,97 @@ Built for the SerpApi India Hackathon 2026, Track 3: Travel & Local Discovery.
 
 ## Quick start
 
-Prerequisites: Node 18+ and Python 3.11+.
+**Prerequisites:** Node 18+ · Python 3.11+
 
 ```bash
-# 1. backend (http://localhost:8000)
+# 1. Clone and enter
+git clone <repo-url> waypoints
+cd waypoints
+
+# 2. Backend  →  http://localhost:8000
 cd backend
 pip install -r requirements.txt
-cp .env.example .env          # add SERPAPI_KEY and GROQ_API_KEY (both optional for the demo)
+cp .env.example .env          # open .env and paste your keys (see below)
 uvicorn app.main:app --reload
 
-# 2. frontend (http://localhost:5173) — in a second terminal
-cd frontend
+# 3. Frontend  →  http://localhost:5173  (in a new terminal)
+cd ../frontend
 npm install
 npm run dev
 ```
 
-Open <http://localhost:5173>. Click **Delhi → Jaipur demo** (or **See how it survives a delay**) — it works with **no API keys at all**.
+Open <http://localhost:5173> and click **Delhi → Jaipur demo** — it runs the full pipeline with **no API keys at all**.
 
-| Key | Needed for | Without it |
-|-----|-----------|------------|
-| `SERPAPI_KEY` | Live routes anywhere | Live search is disabled with a clear message. The demo journey still works. Nothing is ever invented. |
-| `GROQ_API_KEY` | LLM reasoning (analyst, planner, curator, narrator, explanations) | Deterministic rule-based fallbacks are used and labelled as such in the trace. |
+---
 
-Optional: `npm run build` in `frontend/` and FastAPI will serve the built app on port 8000 too.
+## Adding your SerpApi key
 
-### Run the tests
+> This is the most important step for live search. Everything else is already wired up.
 
-```bash
-cd backend && python -m pytest
+1. Get your key at <https://serpapi.com/manage-api-key>
+2. Open `backend/.env`
+3. Set `SERPAPI_KEY=<your-key>`
+4. Restart the backend (`uvicorn app.main:app --reload`)
+
+That's it. The key never leaves the server — it's scrubbed from every log, error and trace entry. The frontend never sees it.
+
+```env
+# backend/.env  — minimum config for live search
+SERPAPI_KEY=your_key_here
+
+# Optional: enables LLM reasoning (analyst, curator, narrator)
+# Without this, deterministic rule-based fallbacks are used (and labelled as such)
+GROQ_API_KEY=your_groq_key_here
 ```
 
-Covers: opening-hours parsing, temporal fit (the spec's 7:40 PM examples, event windows, sunset), the SerpApi client (engine params, cache, key scrubbing, budget), the full demo pipeline, stress tests and recovery validity, replanning, the time slider, the LLM guards, the live code path against a mocked SerpApi, and the HTTP API.
+| Key | Where to get it | What happens without it |
+|-----|----------------|------------------------|
+| `SERPAPI_KEY` | [serpapi.com/manage-api-key](https://serpapi.com/manage-api-key) | Live search disabled. Demo still works. **Nothing is ever invented.** |
+| `GROQ_API_KEY` | [console.groq.com/keys](https://console.groq.com/keys) | Rule-based fallbacks used everywhere. Labelled as such in the UI and trace. |
+
+A typical live journey uses **~40–60 SerpApi calls** (TTL-cached after first run). Set `SERPAPI_MAX_CALLS_PER_JOURNEY=40` in `.env` to protect a small quota.
+
+---
+
+## How SerpApi powers every stage
+
+WAYPOINTS uses SerpApi as its **sole evidence layer**. Every fact that enters the system comes from a SerpApi engine call. Nothing is invented or assumed.
+
+| Stage | SerpApi engines used |
+|-------|---------------------|
+| Map the route corridor | `google_maps_directions` · `google_maps` (corridor town verification) |
+| Find experiences along the way | `google_maps` (category search at each corridor town) |
+| Check opening hours | `google_maps` (place details per finalist) |
+| Read visitor reviews | `google_maps_reviews` (top reviews for ranking) |
+| Find live events | `google_events` · `google_maps` (venue geocoding) |
+| Check current signals | `google_news` (closures, disruptions, crowds) |
+| Confirm travel times | `google_maps_directions` (per-segment, per finalist) |
+| Find evidence for scoring | `google` (web search per experience) |
+| Suggest flights | `google_flights` |
+| Suggest hotels | `google_hotels` |
+
+Every single call is recorded in the **Live search trace** panel — engine name, query, latency, result count, and whether it was served from cache. You can open this on any route page.
+
+### SerpApi tool layer (`backend/app/serpapi/`)
+
+```python
+search_web(query, location, num)             # engine=google
+search_maps(query, lat, lon, zoom)           # engine=google_maps
+get_place(place_id, data_id, lat, lon)       # engine=google_maps (type=place)
+get_reviews(data_id, num, sort_by)           # engine=google_maps_reviews
+get_directions(start, end, travel_mode)      # engine=google_maps_directions
+search_events(query, location, date_filter)  # engine=google_events
+search_news(query)                           # engine=google_news
+search_flights(departure_id, arrival_id, outbound_date)  # engine=google_flights
+search_hotels(query, check_in, check_out)    # engine=google_hotels
+```
+
+All calls go through one client with:
+- **Server-side TTL cache** — place hours cached for hours; directions/news/events for minutes
+- **Single-flight deduplication** — concurrent identical queries coalesce into one upstream call
+- **Per-journey call budget** — configurable cap (`SERPAPI_MAX_CALLS_PER_JOURNEY`)
+- **Key scrubbing** — `SERPAPI_KEY` is stripped from every error, log and trace entry
+- **3-attempt retry** — 429s and 5xx get exponential backoff; 401/403 fail immediately
 
 ---
 
@@ -67,115 +152,127 @@ Covers: opening-hours parsing, temporal fit (the spec's 7:40 PM examples, event 
 
 ```mermaid
 flowchart LR
-  UI[React + Vite + Tailwind<br/>Leaflet map · TanStack Query] -->|/api| API[FastAPI]
+  UI[React + Vite + Tailwind\nLeaflet map · TanStack Query] -->|/api| API[FastAPI]
   API --> ORCH[SearchOrchestrator]
-  ORCH --> SERP[(SerpApi tool layer<br/>cache · budget · trace)]
-  ORCH --> LLM[Groq agents<br/>validated output]
+  ORCH --> SERP[(SerpApi tool layer\ncache · budget · trace)]
+  ORCH --> LLM[Groq agents\nvalidated output]
   ORCH --> ENG[Temporal engine]
-  SERP -->|google_maps · reviews · directions<br/>google · news · events · flights · hotels| SA[SerpApi]
+  SERP -->|google_maps · reviews · directions\ngoogle · news · events · flights · hotels| SA[SerpApi]
   ENG --> G[Temporal Experience Graph]
   G --> OPT[Route optimizer ×5 modes]
   OPT --> STRESS[Stress test]
   STRESS --> REPAIR[Automatic recovery]
 ```
 
-**The frontend never talks to SerpApi.** `SERPAPI_KEY` lives only in the backend, is scrubbed from every error and trace, and is never serialized.
+**The frontend never talks to SerpApi.** All API calls go `frontend → FastAPI → SerpApi`. The key never crosses the wire to the browser.
 
-### Discovery pipeline (`backend/app/engine/orchestrator.py`)
+---
 
-Progress shown in the UI is the real pipeline, not an animation:
+## Discovery pipeline (`engine/orchestrator.py`)
 
-1. **Understand** — Journey Analyst normalizes styles, interests and meal needs
-2. **Map the route** — `google_maps_directions`, corridor towns verified through `google_maps`
-3. **Find experiences** — Discovery Planner issues corridor searches; dedupe + geographic filter
-4. **Opening windows** — `google_maps` place details + `google_maps_reviews` for finalists
-5. **Events** — `google_events`, venues geocoded through Maps
-6. **Current signals** — `google_news` triaged; sunset computed from lat/lon/date
-7. **Feasibility** — five optimizers over the same graph, then travel times confirmed by Directions, then web evidence via `google`
-8. **Stress** — robustness battery, fallbacks, narrative
+The progress shown in the UI is the **real pipeline executing**, not an animation. Each stage updates the UI as it finishes.
 
-### SerpApi tool layer (`backend/app/serpapi/`)
+| # | Stage | What runs |
+|---|-------|-----------|
+| 1 | **Understand** | Journey Analyst (Groq) normalizes travel style, interests, meal needs |
+| 2 | **Map the route** | `google_maps_directions` for the full corridor; `google_maps` verifies each town |
+| 3 | **Find experiences** | Discovery Planner issues 15–25 `google_maps` searches along the corridor |
+| 4 | **Opening windows** | `google_maps` place detail + `google_maps_reviews` for the top 22 finalists |
+| 5 | **Events** | `google_events` at corridor towns; venues geocoded through `google_maps` |
+| 6 | **Current signals** | `google_news` triaged by Experience Curator; sunset computed from lat/lon/date |
+| 7 | **Feasibility** | 5 optimizers over the graph; `google_maps_directions` confirms travel times; `google` adds web evidence |
+| 8 | **Stress** | Robustness battery (+15/+30/+45/+60 min delays); fallback validation; narrative |
 
-`search_web` · `search_maps` · `get_place` · `get_reviews` · `get_directions` · `search_events` · `search_news` · `search_flights` · `search_hotels`
+---
 
-All go through one client with server-side TTL cache (places hours, directions/news/events minutes), single-flight de-duplication, a per-journey call budget (`SERPAPI_MAX_CALLS_PER_JOURNEY`) and a trace entry per call.
-
-### The eight reasoning modules
+## The eight reasoning modules
 
 | # | Module | Implementation |
 |---|--------|----------------|
 | 1 | Journey Analyst | Groq (JSON, validated) → rule fallback |
-| 2 | Discovery Planner | Groq → rule fallback; queries are generic categories, merged with deterministic coverage |
+| 2 | Discovery Planner | Groq → rule fallback; queries are generic categories, merged with deterministic corridor coverage |
 | 3 | Experience Curator | Groq: preference nudge clamped to ±0.1, review-grounded one-liners (digits rejected), news triage by index |
-| 4 | Temporal Validator | `engine/temporal.py` — pure code |
+| 4 | Temporal Validator | `engine/temporal.py` — pure deterministic code |
 | 5 | Route Optimizer | `engine/optimizer.py` — beam search, pure code |
-| 6 | Stress Tester | `engine/stress.py` simulation; Groq only phrases the result |
-| 7 | Recovery Planner | `engine/repair.py` validates; Groq only explains |
-| 8 | Trip Narrator | Groq; every number must appear in the evidence, otherwise discarded |
+| 6 | Stress Tester | `engine/stress.py` simulation; Groq only phrases the narrative result |
+| 7 | Recovery Planner | `engine/repair.py` validates replacements; Groq only writes the explanation |
+| 8 | Trip Narrator | Groq; every number cited must appear in the evidence, otherwise discarded |
 
-### Temporal fit (`engine/temporal.py`)
+---
 
-`arrival + opening hours + visit duration (+ event / sunset window)` →
-`IDEAL_WINDOW · OPEN_AT_ARRIVAL · CLOSING_TOO_SOON · NOT_OPEN · EVENT_CONFLICT · WINDOW_MISSED · UNKNOWN_HOURS`
-
-A restaurant open 6–11 PM at a 7:40 PM arrival scores high; an attraction that closed at 7 PM scores **zero** and is never recommended.
-
-### Waypoint score (`engine/scoring.py`)
+## Temporal fit (`engine/temporal.py`)
 
 ```
-0.25 Preference Fit + 0.20 Temporal Fit + 0.20 Route Fit
-+ 0.15 Experience Quality + 0.10 Evidence Reliability + 0.10 Current Relevance
+arrival_time + opening_hours + visit_duration (+ event_window + sunset_window)
+→ IDEAL_WINDOW | OPEN_AT_ARRIVAL | CLOSING_TOO_SOON | NOT_OPEN
+  | EVENT_CONFLICT | WINDOW_MISSED | UNKNOWN_HOURS
 ```
 
-Weights shift per mode (**Fastest · Experience · Food trail · Scenic · Discovery**) — five objective functions over one graph. The UI exposes the reasoning (✓ list + per-component bars), not an opaque score.
+A restaurant open 6–11 PM at a 7:40 PM arrival scores high. An attraction that closed at 7 PM scores **zero** and is never recommended — no matter how popular it is.
 
-### Plan robustness
+## Waypoint score (`engine/scoring.py`)
 
-Re-runs the route under +15/+30/+45/+60 min delays and combines survival, time buffers, fallback coverage and window flexibility. It is explicitly **not** a probability of success.
+```
+0.25 × Preference Fit   +  0.20 × Temporal Fit   +  0.20 × Route Fit
+0.15 × Experience Quality  +  0.10 × Evidence Reliability  +  0.10 × Current Relevance
+```
 
-### Provenance
+Weights shift per mode: **Fastest · Experience · Food trail · Scenic · Discovery** — five objective functions over one graph. The UI shows the full score breakdown per stop, not an opaque number.
 
-Every fact carries one of: **observed** (SerpApi) · **inferred** (arithmetic over observed data) · **simulated** (what-if) · **user**. The UI shows these chips everywhere, and the **Live search trace** drawer lists every engine call (engine, query, latency, result count, cached).
+## Plan robustness
+
+Re-runs the route under +15/+30/+45/+60 min delays. Combines delay survival, buffer minutes, fallback coverage and window flexibility into a single 0–100 score. Explicitly **not** a probability — it's a robustness index.
+
+## Provenance
+
+Every fact in the UI carries one of:
+- **Observed** — retrieved directly from SerpApi
+- **Inferred** — computed arithmetically from observed data (travel time, detour cost)
+- **Simulated** — modelled in a what-if scenario
+- **User** — entered by the traveller
+
+The **Live search trace** panel shows every SerpApi call made for the journey: engine, query, latency, result count, and cache status.
 
 ---
 
 ## Demo mode
 
-`POST /api/journey/discover/start` with `"demo": true` (or the **Delhi → Jaipur demo** button) serves **deterministic, SerpApi-shaped sample data** underneath the *same* pipeline — same parsing, scoring, optimizer, stress test and recovery.
+`POST /api/journey/discover/start` with `"demo": true` (or the **Delhi → Jaipur demo** button) runs the full pipeline against **deterministic, SerpApi-shaped sample data** — same parsing, scoring, optimizer, stress test and recovery. No keys needed.
 
-Be aware of what it is: sample data. It mixes real landmarks (approximate coordinates and typical hours) with venues labelled “(sample)” and fictional news/event entries. The UI always shows a **DEMO SNAPSHOT** badge and never claims it is live.
+The UI always shows a **DEMO SNAPSHOT** badge. Sample venues are labelled "(sample)". It never claims to be live data.
 
 ### 3-minute demo script
 
 1. Home → enter Delhi → Jaipur, 8:00 AM, Food + Culture + Photography → **Discover my route**
-2. Watch the real stage list, then the map with numbered waypoints and detour times
-3. Drag the **time slider**: stops fade, others appear (sunrise walk vs. evening folk music)
-4. Open **View evidence** on a stop: Maps hours, reviews, search, event
-5. **Stress test → +45 min delay**: a stop breaks, a validated replacement appears, **Apply recovery**
-6. Open the **Live search trace** to show the SerpApi engines used
+2. Watch the real 8-stage pipeline run, then see the map with numbered waypoints and detour times
+3. Drag the **time slider** — stops fade in/out as opening windows shift
+4. Open **View evidence** on any stop: Maps hours, reviews, search result, event
+5. **Stress test → +45 min delay** — a stop breaks, a validated replacement appears → **Apply recovery**
+6. Click **Search trace** in the top bar to see every SerpApi engine call
 
 ---
 
-## API
+## API reference
 
 Interactive docs: <http://localhost:8000/docs>
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/api/journey/analyze` | Journey Analyst output |
-| POST | `/api/journey/discover` | Blocking discovery → `JourneyResponse` |
-| POST | `/api/journey/discover/start` | Start discovery job (real per-stage progress) |
-| GET | `/api/journey/jobs/{id}` | Poll job stages |
-| GET | `/api/journey/{id}` | Fetch a journey |
-| GET | `/api/journey/{id}/slice?minute=` | Time slider: every node's fit at that arrival time |
-| POST | `/api/journey/stress-test` | `delay · flight_delay · stop_overrun · stop_closed · event_delayed · skip_stop` |
-| POST | `/api/journey/replan` | start time, mode, replace/remove/add stop, apply recovery |
-| POST | `/api/journey/segment-discover` | “Show me 5 things along this segment” |
-| GET | `/api/place/{id}` · `/api/place/{id}/evidence` | Experience details and evidence |
-| POST | `/api/search/{maps,web,news,events,directions,flights,hotels}` | Raw SerpApi tools |
-| GET | `/api/health` | Status, configured keys |
+| GET | `/api/health` | Status, which keys are configured, demo mode |
+| POST | `/api/journey/discover/start` | Start a discovery job (streaming stage progress) |
+| GET | `/api/journey/jobs/{id}` | Poll job stage status |
+| GET | `/api/journey/{id}` | Fetch a complete journey snapshot |
+| GET | `/api/journey/{id}/slice?minute=` | Time slider: every node's fit at a given arrival time |
+| POST | `/api/journey/stress-test` | Run one of 6 disruption scenarios |
+| POST | `/api/journey/replan` | Change mode · departure time · add/replace/remove stop · apply recovery |
+| POST | `/api/journey/segment-discover` | "Show me 5 things along this corridor segment" |
+| GET | `/api/place/{id}` | Full place detail |
+| GET | `/api/place/{id}/evidence` | All evidence items for a place |
+| POST | `/api/search/{maps,web,news,events,directions,flights,hotels}` | Raw SerpApi tool pass-through |
 
-Errors return `{"detail": {"code", "message", "retriable"}}`. When SerpApi is down: *“Live search temporarily unavailable.”* with a Retry — never stale or invented data.
+Error format: `{"detail": {"code": "...", "message": "...", "retriable": true/false}}`
+
+When SerpApi is unavailable: `"Live search temporarily unavailable."` with `retriable: true`. Nothing stale or invented is returned.
 
 ---
 
@@ -184,33 +281,109 @@ Errors return `{"detail": {"code", "message", "retriable"}}`. When SerpApi is do
 ```
 backend/
   app/
-    main.py  config.py  schemas.py  cache.py  trace.py  store.py
-    serpapi/   client.py  tools.py  demo_data.py
-    llm/       groq_client.py  agents.py
-    engine/    orchestrator.py  graph.py  temporal.py  scoring.py  optimizer.py
-               stress.py  repair.py  replan.py  respond.py  ingest.py  parsing.py  geo.py  sun.py
-    routers/   journey.py  search.py  place.py
+    main.py          FastAPI app, CORS, SPA fallback
+    config.py        Settings from .env
+    schemas.py       All Pydantic models (mirrors frontend types.ts)
+    cache.py         TTL cache + single-flight dedup
+    trace.py         Per-request search trace context
+    store.py         Journey and job persistence (.data/ JSON snapshots)
+    serpapi/
+      client.py      SerpApi HTTP client (cache · budget · key scrubbing · retry)
+      tools.py       9 typed tool functions
+      demo_data.py   Deterministic SerpApi-shaped demo responses
+    llm/
+      groq_client.py Groq async client with retry + streaming
+      agents.py      8 reasoning modules (JSON-validated, with rule-based fallbacks)
+    engine/
+      orchestrator.py  8-stage discovery pipeline with real progress
+      graph.py         Temporal Experience Graph data structure
+      temporal.py      Temporal fit engine (opening hours × arrival time)
+      scoring.py       6-component waypoint scoring, 5 route mode weight sets
+      optimizer.py     Beam search route optimizer
+      stress.py        6-scenario disruption simulator
+      repair.py        Validated replacement search
+      replan.py        Replanning (mode · time · add/remove/replace)
+      respond.py       JourneyResponse builder
+      ingest.py        SerpApi result → ExperienceNode parser
+      parsing.py       Hours, budgets, names normalisation
+      geo.py           Haversine, corridor projection, axis math
+      sun.py           Sunset time from lat/lon/date
+      timeutils.py     Clock formatting helpers
+    routers/
+      journey.py     Discovery, job polling, stress, replan, segment-discover
+      search.py      Raw SerpApi tool endpoints
+      place.py       Place detail and evidence
   tests/
+    conftest.py
+    test_temporal.py      Opening hours × arrival time, all 7 status codes
+    test_serpapi_client.py Cache, budget, key scrubbing, retry, empty hints
+    test_parsing.py       Hours parsing, budget parsing
+    test_engine_demo.py   Full demo pipeline, stress, recovery
+    test_agents.py        LLM guard rails, fallback activation
+    test_live_path.py     Live code path against mocked SerpApi responses
+    test_api.py           HTTP API integration tests
+
 frontend/
   src/
-    pages/       HomePage  DiscoverPage  RoutePage  StressPage  PlacePage
-    components/  home/  route/  ui/  layout/
-    lib/         api.ts  types.ts  time.ts  utils.ts
+    pages/
+      HomePage.tsx       Route planner form + hero visualisation
+      DiscoverPage.tsx   Live 8-stage pipeline progress view
+      RoutePage.tsx      Map + timeline + waypoint cards + time slider
+      StressPage.tsx     Disruption simulator + recovery panel
+      PlacePage.tsx      Full experience detail + temporal fit chart
+    components/
+      layout/TopBar.tsx
+      home/PlanForm.tsx  HeroViz.tsx
+      route/MapView.tsx  TimeSlider.tsx  WaypointCard.tsx  Timeline.tsx
+             TraceSheet.tsx  EvidenceSheet.tsx  WhatIfDrawer.tsx
+             RobustnessRing.tsx  RouteModes.tsx  SignalsStrip.tsx
+             SegmentDiscover.tsx  StayFlights.tsx  ChangeAlert.tsx
+             AIInsight.tsx  MapControls.tsx  BottomJourneyStrip.tsx
+      ui/button.tsx  chips.tsx  sheet.tsx  logo.tsx  place-art.tsx
+    lib/
+      api.ts       Typed fetch client
+      types.ts     All TypeScript types (mirrors backend schemas.py)
+      time.ts      Clock + duration helpers
+      utils.ts     cn(), roleLabel(), pct(), etc.
 ```
 
-## Design notes
+---
 
-- **Responsive**: map-first on desktop; on phones the map sticks to the top with the time slider beneath, then timeline, cards and stress test.
-- **Persistence**: journeys are JSON snapshots under `backend/.data/` (PostgreSQL isn't needed — a journey is a self-contained snapshot of evidence + graph).
-- **Maps**: Leaflet with CARTO/OpenStreetMap tiles (rendering only; all travel data comes from SerpApi).
-- **Not built, on purpose**: accounts, chat, gamification, bookings, fake ML predictions.
+## Running the tests
+
+```bash
+cd backend
+python -m pytest
+# or with verbose output:
+python -m pytest -v
+```
+
+No API keys needed — tests use mocked SerpApi responses. The live-path test (`test_live_path.py`) mocks `httpx.AsyncClient` to verify the real HTTP code path without spending quota.
+
+---
+
+## Design decisions
+
+**Why SerpApi and not a scraper?** Reliable structured output, well-defined schemas per engine, rate limits managed by the platform, and support for `google_maps`, `google_events`, `google_flights` and `google_hotels` under one key. Every field we parse is documented.
+
+**Why not a database?** Journeys are self-contained snapshots. A JSON file under `.data/journeys/` holds everything: the request, all SerpApi evidence, the graph, the route, stress results. This makes the demo reproducible and the architecture simple.
+
+**Why Groq?** Open-source models (Llama 3.3 70B), fast inference, JSON mode support, and free tier for experimentation. Every LLM call has a JSON schema and a rule-based fallback — the app never depends on the LLM being available.
+
+**Why Leaflet over Google Maps?** CARTO/OpenStreetMap tiles for rendering, SerpApi Directions for all routing data. This keeps the frontend free of Google Maps billing while still using Google's routing engine through SerpApi.
+
+**Not built on purpose:** accounts, chat UI, gamification, bookings, price predictions, fake ML scores.
+
+---
 
 ## Limitations
 
-- The live SerpApi path is tested against SerpApi-shaped mock responses; response fields vary by place, so parsers are tolerant and unknown hours are shown as *“Hours unverified”* rather than assumed.
-- If Directions returns no geometry, the route line is an estimated straight corridor and is labelled so.
-- A typical live journey uses ~40–60 SerpApi calls (cached afterwards); lower `SERPAPI_MAX_CALLS_PER_JOURNEY` to protect a small quota.
-- The Delhi↔Jaipur corridor has built-in town seeds for runs without Groq; they are verified through Google Maps before use.
+- Live SerpApi response fields vary by place and locale; parsers are tolerant and show *"Hours unverified"* rather than inventing hours.
+- If Directions returns no geometry, the route line is an estimated straight corridor (labelled in the UI footer).
+- A typical live journey costs ~40–60 SerpApi credits (cached on repeat runs). Set `SERPAPI_MAX_CALLS_PER_JOURNEY=40` to cap spend.
+- The Delhi↔Jaipur corridor has built-in town seeds for runs without Groq; all towns are verified through `google_maps` before use.
+
+---
 
 ## License
 

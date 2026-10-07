@@ -3,6 +3,7 @@ import { Route, Routes, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import HomePage from "@/pages/HomePage";
 import DiscoverPage from "@/pages/DiscoverPage";
+import AuthPage from "@/pages/AuthPage";
 import NotFound from "@/pages/NotFound";
 
 const RoutePage = lazy(() => import("@/pages/RoutePage"));
@@ -24,6 +25,7 @@ export default function App() {
       <AnimatePresence mode="wait" initial={false}>
         <Routes location={location} key={location.pathname.split("/").slice(0, 3).join("/")}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/auth" element={<AuthPage />} />
           <Route path="/discover/:jobId" element={<DiscoverPage />} />
           <Route path="/route/:id" element={<RoutePage />} />
           <Route path="/route/:id/stress-test" element={<StressPage />} />

@@ -2,8 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Ban, CalendarClock, Check, FastForward, Hourglass, Loader2, RotateCcw, Shield, ShieldAlert, SkipForward, Timer, TriangleAlert, Wrench, X, Zap } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, Cell, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  ArrowLeft, ArrowRight, Ban, CalendarClock, Check,
+  FastForward, Hourglass, Loader2, RotateCcw,
+  Shield, ShieldAlert, SkipForward, Timer,
+  TriangleAlert, Wrench, X, Zap,
+} from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button } from "@/components/ui/button";
 import { ProvenanceChip } from "@/components/ui/chips";
@@ -14,79 +18,106 @@ import { fmtClock, fmtDuration, timeAgo } from "@/lib/time";
 import { cn, STATUS_LABEL } from "@/lib/utils";
 import NotFound from "./NotFound";
 
-interface ScenarioDef { key: string; scenario: Scenario; minutes: number; label: string; icon: typeof Timer; needsStop?: boolean; hint: string; demo?: boolean }
+interface ScenarioDef {
+  key: string; scenario: Scenario; minutes: number;
+  label: string; icon: typeof Timer; needsStop?: boolean; hint: string; demo?: boolean;
+}
 
 const SCENARIOS: ScenarioDef[] = [
-  { key: "d30", scenario: "delay", minutes: 30, label: "+30 min delay", icon: Timer, hint: "Flight delayed, traffic, a late start" },
-  { key: "d45", scenario: "delay", minutes: 45, label: "+45 min delay", icon: Hourglass, hint: "The demo scenario", demo: true },
-  { key: "d60", scenario: "delay", minutes: 60, label: "+60 min delay", icon: FastForward, hint: "A really bad day" },
-  { key: "closed", scenario: "stop_closed", minutes: 0, label: "Stop closed", icon: Ban, needsStop: true, hint: "A stop turns out to be shut" },
-  { key: "event", scenario: "event_delayed", minutes: 30, label: "Event delayed", icon: CalendarClock, hint: "Event pushed by 30 min" },
-  { key: "skip", scenario: "skip_stop", minutes: 0, label: "Skip current stop", icon: SkipForward, needsStop: true, hint: "You decide to skip one" },
-  { key: "overrun", scenario: "stop_overrun", minutes: 30, label: "Stop runs 30 min long", icon: Zap, needsStop: true, hint: "You lose track of time" },
+  { key: "d30",    scenario: "delay",         minutes: 30, label: "+30 min delay",       icon: Timer,        hint: "Traffic, late start"  },
+  { key: "d45",    scenario: "delay",         minutes: 45, label: "+45 min delay",       icon: Hourglass,    hint: "The demo scenario", demo: true },
+  { key: "d60",    scenario: "delay",         minutes: 60, label: "+60 min delay",       icon: FastForward,  hint: "A really bad day"     },
+  { key: "closed", scenario: "stop_closed",   minutes: 0,  label: "Stop closes",         icon: Ban,          hint: "Venue shut",    needsStop: true },
+  { key: "event",  scenario: "event_delayed", minutes: 30, label: "Event delayed +30m",  icon: CalendarClock,hint: "Event pushed"         },
+  { key: "skip",   scenario: "skip_stop",     minutes: 0,  label: "Skip a stop",         icon: SkipForward,  hint: "Change of plans", needsStop: true },
+  { key: "overrun",scenario: "stop_overrun",  minutes: 30, label: "Stop overruns +30m",  icon: Zap,          hint: "Lost track of time", needsStop: true },
 ];
 
-const toneIcon = (t: Tone) => (t === "green" ? <Check className="h-4 w-4" strokeWidth={3} /> : t === "yellow" ? <TriangleAlert className="h-4 w-4" /> : t === "red" ? <X className="h-4 w-4" strokeWidth={3} /> : <SkipForward className="h-3.5 w-3.5" />);
-const toneBg = (t: Tone) => (t === "green" ? "bg-ok text-white" : t === "yellow" ? "bg-warn text-white" : t === "red" ? "bg-bad text-white" : "bg-ink-300 text-white");
+const toneBg = (t: Tone) =>
+  t === "green"  ? "border-ok/40 bg-[rgba(34,197,94,0.08)] text-ok" :
+  t === "yellow" ? "border-warn/40 bg-[rgba(234,179,8,0.08)] text-warn" :
+  t === "red"    ? "border-bad/40 bg-[rgba(239,68,68,0.08)] text-bad" : "border-[#2A2A2A] text-graphite-200";
 
 function StopRow({ s, side }: { s: StressStop; side: "before" | "after" }) {
-  const tone = side === "before" ? s.before_tone : s.after_tone;
+  const tone    = side === "before" ? s.before_tone    : s.after_tone;
   const arrival = side === "before" ? s.before_arrival_min : s.after_arrival_min;
-  const status = side === "before" ? s.before_status : s.after_status;
+  const status  = side === "before" ? s.before_status  : s.after_status;
   return (
-    <li className="flex items-start gap-3">
-      <span className={cn("mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full", toneBg(tone))}>{toneIcon(tone)}</span>
+    <li className="flex items-start gap-3 py-2 border-b border-[#1A1A1A] last:border-0">
+      <div className={cn("h-6 w-6 grid place-items-center border shrink-0 mt-0.5 text-[10px] font-bold", toneBg(tone))}>
+        {tone === "green" ? <Check className="h-3 w-3" strokeWidth={3} /> :
+         tone === "yellow" ? <TriangleAlert className="h-3 w-3" /> :
+         tone === "red" ? <X className="h-3 w-3" strokeWidth={3} /> : "—"}
+      </div>
       <div className="min-w-0 flex-1">
-        <div className={cn("truncate text-[14px] font-semibold", side === "after" && tone === "red" && "line-through decoration-bad/50")}>{s.name}</div>
-        <div className="tnum text-[12px] text-ink-500">
-          {s.skipped && side === "after" ? (s.after_reason || "Skipped") : <>{arrival != null ? fmtClock(arrival) : "—"}{status ? ` · ${STATUS_LABEL[status]}` : ""}</>}
+        <div className={cn("text-[12.5px] font-semibold truncate", side === "after" && tone === "red" && "line-through decoration-bad/50")}>
+          {s.name}
         </div>
-        {side === "after" && tone !== "green" && !s.skipped && <div className="mt-0.5 text-[12px] leading-snug text-ink-600">{s.after_reason}</div>}
+        <div className="tnum text-[10.5px] text-graphite-300 mt-0.5">
+          {s.skipped && side === "after"
+            ? (s.after_reason || "Skipped")
+            : <>{arrival != null ? fmtClock(arrival) : "—"}{status ? ` · ${STATUS_LABEL[status] ?? status}` : ""}</>}
+        </div>
+        {side === "after" && tone !== "green" && !s.skipped && (
+          <div className="mt-0.5 text-[11px] leading-snug text-graphite-200">{s.after_reason}</div>
+        )}
       </div>
     </li>
   );
 }
 
 function Verdict({ r }: { r: StressResult }) {
-  const survived = r.verdict === "SURVIVED";
+  const survived  = r.verdict === "SURVIVED";
   const recovered = r.outcome === "RECOVERED";
-  const partial = r.outcome === "PARTIALLY_RECOVERED";
-  const good = survived || recovered;
-  const Icon = survived ? Shield : recovered ? Wrench : ShieldAlert;
-  const title = survived ? "YOUR PLAN SURVIVED" : recovered ? "PLAN RECOVERED" : partial ? "PARTIALLY RECOVERED" : "PLAN BREAK DETECTED";
+  const good      = survived || recovered;
+
   return (
-    <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className={cn("rounded-3xl p-5 md:p-6", good ? "bg-ok-50" : "bg-bad-50")}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={cn(
+        "border p-4",
+        good ? "border-ok/30 bg-[rgba(34,197,94,0.05)]" : "border-bad/30 bg-[rgba(239,68,68,0.05)]"
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className={cn("grid h-12 w-12 place-items-center rounded-2xl text-white", good ? "bg-ok" : "bg-bad")}><Icon className="h-6 w-6" /></span>
+          <div className={cn("h-10 w-10 grid place-items-center", good ? "text-ok" : "text-bad")}>
+            {survived ? <Shield className="h-6 w-6" /> : recovered ? <Wrench className="h-6 w-6" /> : <ShieldAlert className="h-6 w-6" />}
+          </div>
           <div>
-            <div className={cn("text-[11px] font-extrabold uppercase tracking-[0.14em]", good ? "text-ok" : "text-bad")}>{r.label}</div>
-            <div className={cn("font-display text-2xl font-extrabold leading-tight md:text-3xl", good ? "text-ok" : "text-bad")}>{title}</div>
+            <div className={cn("font-display text-[20px] font-extrabold leading-tight", good ? "text-ok" : "text-bad")}>
+              {survived ? "Plan survived" : recovered ? "Plan recovered" : r.outcome === "PARTIALLY_RECOVERED" ? "Partially recovered" : "Plan broken"}
+            </div>
+            <div className="eyebrow mt-0.5">{r.label}</div>
           </div>
         </div>
         <ProvenanceChip provenance="simulated" />
       </div>
+
       {!survived && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] font-semibold">
-          <span className="rounded-full bg-bad px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wider text-white">Break detected</span>
-          <span className="text-ink-700">{r.broken} stop{r.broken === 1 ? "" : "s"} no longer fit{r.broken === 1 ? "s" : ""}</span>
-          {r.recovery && <><ArrowRight className="h-4 w-4 text-ink-400" /><span className="rounded-full bg-ok px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wider text-white">{recovered ? "Recovered" : partial ? "Partly recovered" : "Not recoverable"}</span><span className="text-ink-700">{r.recovery.experiences_preserved} of {r.recovery.experiences_total} experiences kept</span></>}
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          <span className={cn("text-[10px] font-bold px-2 py-1 border", good ? "border-ok/30 text-ok" : "border-bad/30 text-bad")}>
+            {r.broken} break{r.broken !== 1 ? "s" : ""}
+          </span>
+          {r.recovery && (
+            <>
+              <ArrowRight className="h-3.5 w-3.5 text-graphite-400" />
+              <span className={cn("text-[10px] font-bold px-2 py-1 border",
+                recovered ? "border-ok/30 text-ok" : r.outcome === "PARTIALLY_RECOVERED" ? "border-warn/30 text-warn" : "border-bad/30 text-bad"
+              )}>
+                {recovered ? "Recovered" : r.outcome === "PARTIALLY_RECOVERED" ? "Partial" : "Not recoverable"}
+              </span>
+            </>
+          )}
         </div>
       )}
-      <p className="mt-3 max-w-3xl text-[14px] leading-relaxed text-ink-700">{r.explanation}</p>
-      <p className="mt-2 text-[11.5px] text-ink-500">{r.explanation_engine === "groq" ? "Explained by an open-source model on Groq" : "Explained by deterministic rules"}. Deterministic scenario simulation over current search data — not a prediction of the future.</p>
-    </motion.div>
-  );
-}
 
-function WaypointMini({ w, tag }: { w: Waypoint; tag?: "new" }) {
-  return (
-    <li className="flex items-center gap-3 py-1.5">
-      <span className={cn("grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-extrabold text-white", w.tone === "green" ? "bg-ok" : w.tone === "yellow" ? "bg-warn" : "bg-bad")}>{w.order}</span>
-      <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold">{w.name}</span>
-      {tag === "new" && <span className="rounded-full bg-accent px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider text-white">new</span>}
-      <span className="tnum shrink-0 text-[12px] font-semibold text-ink-500">{fmtClock(w.arrival_min, { short: true })}</span>
-    </li>
+      <p className="mt-3 text-[12.5px] leading-relaxed text-graphite-100">{r.explanation}</p>
+      <p className="mt-1.5 text-[10px] text-graphite-300">
+        {r.explanation_engine === "groq" ? "Explained by Groq" : "Deterministic rules"} · not a prediction
+      </p>
+    </motion.div>
   );
 }
 
@@ -107,7 +138,10 @@ export default function StressPage() {
     mutationFn: api.replan,
     onSuccess: (r) => { qc.setQueryData(["journey", id], r.journey); navigate(`/route/${id}`); },
   });
-  const reset = useMutation({ mutationFn: () => api.replan({ journey_id: id, reset_disruptions: true }), onSuccess: (r) => { qc.setQueryData(["journey", id], r.journey); sim.reset(); setActive(null); } });
+  const reset = useMutation({
+    mutationFn: () => api.replan({ journey_id: id, reset_disruptions: true }),
+    onSuccess: (r) => { qc.setQueryData(["journey", id], r.journey); sim.reset(); setActive(null); },
+  });
 
   const run = (d: ScenarioDef, stop = stopId) => {
     if (!j) return;
@@ -124,189 +158,286 @@ export default function StressPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [j]);
 
-  if (q.isLoading) return <div className="min-h-dvh"><TopBar /><div className="mx-auto max-w-5xl space-y-4 p-4"><div className="skeleton h-32" /><div className="skeleton h-64" /></div></div>;
-  if (q.isError || !j) return (q.error as ApiError | null)?.status === 404 ? <NotFound message="That route has expired. Build it again." /> : <NotFound message="Live search temporarily unavailable." />;
+  if (q.isLoading) return (
+    <div className="min-h-dvh bg-canvas"><TopBar />
+      <div className="mx-auto max-w-4xl space-y-3 p-4">
+        {[28, 64, 40].map((h, i) => <div key={i} className="skeleton" style={{ height: `${h * 4}px` }} />)}
+      </div>
+    </div>
+  );
 
-  const r = sim.data;
+  if (q.isError || !j)
+    return (q.error as ApiError | null)?.status === 404
+      ? <NotFound message="That route has expired." />
+      : <NotFound message="Live search temporarily unavailable." />;
+
+  const r   = sim.data;
   const err = (sim.error as ApiError | null) ?? (apply.error as ApiError | null);
   const rec = r?.recovery;
-  const CAP = 120; // open-all-day places have hours of slack; cap so tight windows stay readable
-  const chart = r?.stops.map((s) => ({ name: s.name.length > 14 ? s.name.slice(0, 13) + "…" : s.name, before: Math.min(CAP, Math.max(0, s.before_slack_min ?? CAP)), after: s.after_tone === "red" ? 0 : Math.min(CAP, Math.max(0, s.after_slack_min ?? CAP)), red: s.after_tone === "red" })) ?? [];
   const selectedStop = stopId ?? j.waypoints[0]?.id ?? null;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-dvh">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-dvh bg-[#F8F7F3]">
       <TopBar mode={j.data_mode} since={timeAgo(j.created_at)} journeyId={id} />
-      <main className="mx-auto max-w-[1180px] space-y-6 px-4 pb-24 pt-6 md:px-6 md:pt-10">
-        <header className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <div className="eyebrow mb-1">Plan stress test · what if?</div>
-            <h1 className="font-display text-4xl font-extrabold leading-none md:text-5xl">Break it on purpose.</h1>
-            <p className="mt-3 max-w-2xl text-ink-600">{j.origin.name.split(",")[0]} → {j.destination.name.split(",")[0]} · {j.waypoints.length} stops. Pick a disruption: we re-run every arrival time, opening window and event window, then repair what breaks.</p>
-          </div>
-          <div className="flex items-center gap-3 rounded-2xl border border-line bg-white px-4 py-3">
-            <Ring score={r?.robustness_after ?? j.robustness.score} size={56} stroke={6} />
+
+      <main className="mx-auto max-w-[1100px] space-y-5 px-4 pb-24 pt-6 md:px-6">
+
+        {/* Header */}
+        <header>
+          <Link to={`/route/${id}`} className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#667085] hover:text-[#151A23] mb-4">
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to route
+          </Link>
+          <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <div className="eyebrow">Plan robustness</div>
-              <div className="tnum text-sm font-semibold">{r ? <>{r.robustness_before}% <ArrowRight className="mx-0.5 inline h-3.5 w-3.5" /> <b>{r.robustness_after}%</b></> : `${j.robustness.score}%`}</div>
+              <div className="eyebrow text-[10px] text-[#F45B22] font-bold tracking-[0.14em] uppercase mb-1.5">PLAN STRESS TEST</div>
+              <h1 className="font-display text-3xl font-bold tracking-tight text-[#151A23] md:text-4xl">
+                Break it on purpose.
+              </h1>
+              <p className="mt-2 max-w-xl text-sm text-[#667085]">
+                {j.origin.name.split(",")[0]} → {j.destination.name.split(",")[0]} · {j.waypoints.length} stop{j.waypoints.length !== 1 ? "s" : ""}.
+                Pick a disruption. We re-run the temporal graph and repair what breaks.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 border border-[#E4E2DC] p-3 rounded-[12px] bg-white shadow-sm">
+              <div className="relative">
+                <Ring score={r?.robustness_after ?? j.robustness.score} size={50} stroke={5} />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="tnum text-xs font-bold text-[#151A23]">
+                    {r?.robustness_after ?? j.robustness.score}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <div className="eyebrow text-[10px] text-[#667085]">ROBUSTNESS</div>
+                <div className="tnum text-xs font-semibold text-[#151A23]">
+                  {r ? <>{r.robustness_before}% <ArrowRight className="inline h-3 w-3 text-[#98A2B3]" /> <b className="text-[#F45B22]">{r.robustness_after}%</b></> : `${j.robustness.score}%`}
+                </div>
+              </div>
             </div>
           </div>
         </header>
 
         {j.waypoints.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-line bg-white p-8 text-center text-ink-600">This route has no stops to stress-test. Switch to Experience mode first.</div>
+          <div className="border border-[#E4E2DC] p-8 text-center text-[#667085] text-sm bg-white rounded-[12px]">
+            No stops to stress-test. Switch to Experience mode first.
+          </div>
         ) : (
           <>
-            <section aria-label="Scenarios" className="card p-4 md:p-5">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="font-display text-xl font-bold">What if?</h2>
+            {/* ── Scenario selector ── */}
+            <div className="border border-[#E4E2DC] bg-white rounded-[12px] overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[#E4E2DC]">
+                <div className="eyebrow text-[10px] text-[#667085]">SELECT DISRUPTION</div>
                 {(j.state.delay_min > 0 || j.state.closed_ids.length > 0 || j.state.event_shift_min > 0) && (
-                  <Button size="sm" variant="outline" onClick={() => reset.mutate()} disabled={reset.isPending}>{reset.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />} Clear applied disruptions</Button>
+                  <Button size="sm" variant="ghost" onClick={() => reset.mutate()} disabled={reset.isPending}>
+                    {reset.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                    Clear
+                  </Button>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+
+              <div className="grid grid-cols-2 gap-px bg-[#E4E2DC] sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
                 {SCENARIOS.map((d) => (
-                  <button key={d.key} onClick={() => run(d)} disabled={sim.isPending}
-                    className={cn("group relative flex flex-col items-start gap-1 rounded-2xl border p-3 text-left transition active:scale-[0.97] disabled:opacity-60",
-                      active === d.key ? "border-accent bg-accent-50 ring-2 ring-accent/20" : "border-line bg-white hover:border-ink-300", d.demo && active !== d.key && "border-accent-200")}>
-                    <span className="flex w-full items-center justify-between">
-                      <span className={cn("grid h-8 w-8 place-items-center rounded-xl", active === d.key ? "bg-accent text-white" : "bg-sand-200 text-ink-600")}>
-                        {sim.isPending && active === d.key ? <Loader2 className="h-4 w-4 animate-spin" /> : <d.icon className="h-4 w-4" />}
-                      </span>
-                      {d.demo && <span className="rounded-full bg-accent px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-white">Demo</span>}
-                    </span>
-                    <span className="text-[13.5px] font-bold uppercase leading-tight tracking-wide">{d.label}</span>
-                    <span className="text-[11.5px] text-ink-500">{d.hint}</span>
+                  <button
+                    key={d.key}
+                    onClick={() => run(d)}
+                    disabled={sim.isPending}
+                    className={cn(
+                      "flex flex-col items-start gap-1.5 p-3 text-left transition-colors bg-white hover:bg-[#FAFAF8] cursor-pointer",
+                      active === d.key && "bg-[#FFF4EF] outline outline-1 outline-[#F45B22]",
+                      "disabled:opacity-60"
+                    )}
+                  >
+                    <div className={cn(
+                      "h-7 w-7 rounded-lg grid place-items-center border transition-colors",
+                      active === d.key ? "border-[#F45B22] bg-[#FFF4EF] text-[#F45B22]" : "border-[#E4E2DC] bg-[#FAFAF8] text-[#667085]"
+                    )}>
+                      {sim.isPending && active === d.key
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <d.icon className="h-3.5 w-3.5" />}
+                    </div>
+                    <span className="text-[11px] font-bold text-[#151A23] leading-tight">{d.label}</span>
+                    <span className="text-[10px] text-[#667085] font-medium">{d.hint}</span>
+                    {d.demo && <span className="text-[8px] font-bold uppercase tracking-wider text-[#F45B22] border border-[#F45B22]/30 bg-[#FFF4EF] px-1 rounded-sm">DEMO</span>}
                   </button>
                 ))}
               </div>
-              <div className="mt-4 border-t border-line pt-3">
-                <div className="eyebrow mb-2">Stop for “closed / skip / overrun”</div>
-                <div className="scroll-thin flex gap-1.5 overflow-x-auto pb-1">
+
+              {/* Stop picker */}
+              <div className="px-4 py-3 border-t border-[#E4E2DC] bg-[#FAFAF8]">
+                <div className="eyebrow text-[10px] tracking-[0.14em] text-[#667085] font-bold mb-2">STOP TARGET (for closed / skip / overrun)</div>
+                <div className="flex flex-wrap gap-1.5">
                   {j.waypoints.map((w) => (
-                    <button key={w.id} onClick={() => setStopId(w.id)} aria-pressed={selectedStop === w.id}
-                      className={cn("flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition", selectedStop === w.id ? "border-ink bg-ink text-white" : "border-line bg-white text-ink-600 hover:border-ink-300")}>
-                      <span className={cn("grid h-5 w-5 place-items-center rounded-full text-[10px] font-extrabold text-white", selectedStop === w.id ? "bg-white/25" : "bg-ink-400")}>{w.order}</span>
-                      {w.name.length > 22 ? w.name.slice(0, 21) + "…" : w.name}
+                    <button
+                      key={w.id}
+                      onClick={() => setStopId(w.id)}
+                      aria-pressed={selectedStop === w.id}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 text-[11px] font-semibold rounded-[8px] border transition-colors cursor-pointer",
+                        selectedStop === w.id
+                          ? "border-[#F45B22] bg-[#F45B22] text-white"
+                          : "border-[#E4E2DC] bg-white text-[#151A23] hover:border-[#F45B22]"
+                      )}
+                    >
+                      <span className={cn(
+                        "h-4 w-4 rounded-full grid place-items-center text-[9px] font-bold",
+                        selectedStop === w.id ? "bg-white/20 text-white" : "bg-[#F0EFEA] text-[#151A23]"
+                      )}>
+                        {w.order}
+                      </span>
+                      {w.name.length > 18 ? w.name.slice(0, 17) + "…" : w.name}
                     </button>
                   ))}
                 </div>
               </div>
-            </section>
+            </div>
 
+            {/* Error */}
             {err && (
-              <div role="alert" className="rounded-2xl border border-bad-100 bg-bad-50 p-4 text-[13.5px] text-bad">
-                {err.message} {err.retriable && <button className="font-bold underline" onClick={() => active && run(SCENARIOS.find((s) => s.key === active)!)}>Retry</button>}
+              <div role="alert" className="border border-bad/30 bg-[#FDF2F2] p-3 text-[12px] text-bad rounded-xl">
+                {err.message}
               </div>
             )}
 
-            {sim.isPending && !r && <div className="space-y-3"><div className="skeleton h-28" /><div className="skeleton h-64" /></div>}
+            {/* Loading skeletons */}
+            {sim.isPending && !r && (
+              <div className="space-y-3">
+                <div className="skeleton" style={{ height: "120px" }} />
+                <div className="skeleton" style={{ height: "200px" }} />
+              </div>
+            )}
 
             <AnimatePresence mode="wait">
               {r && !r.applicable && (
-                <motion.div key="na" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl border border-line bg-white p-6 text-center">
-                  <p className="font-display text-lg font-bold">Not applicable to this route</p>
-                  <p className="mt-1 text-sm text-ink-600">{r.note}</p>
+                <motion.div key="na" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  className="border border-[#E4E2DC] bg-white rounded-xl p-6 text-center shadow-sm">
+                  <p className="font-display text-[16px] font-bold text-[#151A23]">Not applicable</p>
+                  <p className="mt-1 text-[12px] text-[#4B5563] font-medium">{r.note}</p>
                 </motion.div>
               )}
+
               {r && r.applicable && (
-                <motion.div key={r.label + r.verdict + (r.stop_id ?? "")} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+                <motion.div key={r.label + r.verdict} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                   <Verdict r={r} />
 
-                  <div className={cn("grid gap-4", rec ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
-                    <section className="card p-4 md:p-5">
-                      <h3 className="eyebrow mb-3">Original route</h3>
-                      <ul className="space-y-3.5">{r.stops.map((s) => <StopRow key={s.stop_id} s={s} side="before" />)}</ul>
-                    </section>
-                    <section className="card p-4 md:p-5">
-                      <h3 className="eyebrow mb-3 flex items-center gap-2">After {r.label.toLowerCase()} <ProvenanceChip provenance="simulated" compact /></h3>
-                      <ul className="space-y-3.5">{r.stops.map((s) => <StopRow key={s.stop_id} s={s} side="after" />)}</ul>
-                    </section>
+                  {/* Before / After / Recovery */}
+                  <div className={cn("grid gap-px bg-[#E4E2DC] border border-[#E4E2DC] rounded-xl overflow-hidden shadow-sm", rec ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
+                    {/* Before */}
+                    <div className="bg-white p-4">
+                      <div className="eyebrow text-[10px] tracking-[0.14em] text-[#667085] font-bold mb-3">CURRENT PLAN</div>
+                      <ul>{r.stops.map((s) => <StopRow key={s.stop_id} s={s} side="before" />)}</ul>
+                    </div>
+
+                    {/* After disruption */}
+                    <div className="bg-white p-4">
+                      <div className="eyebrow text-[10px] tracking-[0.14em] text-[#667085] font-bold mb-3 flex items-center gap-2">
+                        AFTER {r.label.toUpperCase()}
+                        <ProvenanceChip provenance="simulated" compact />
+                      </div>
+                      <ul>{r.stops.map((s) => <StopRow key={s.stop_id} s={s} side="after" />)}</ul>
+                    </div>
+
+                    {/* Recovery */}
                     {rec && (
-                      <section className="card border-accent-200 bg-accent-50/40 p-4 md:p-5">
-                        <h3 className="eyebrow mb-3 flex items-center gap-2 !text-accent-600"><Wrench className="h-3.5 w-3.5" /> Auto-recovery</h3>
-                        <ul className="space-y-4">
+                      <div className="bg-[#FFF4EF] p-4">
+                        <div className="eyebrow text-[10px] tracking-[0.14em] font-bold mb-3 flex items-center gap-2 text-[#F45B22]">
+                          <Wrench className="h-3 w-3" /> AUTO-RECOVERY
+                        </div>
+
+                        <div className="space-y-2">
                           {rec.ops.map((o, i) => (
-                            <li key={i} className="rounded-2xl bg-white p-3.5 shadow-sm">
-                              <div className="text-[12px] font-semibold text-ink-500">{o.type === "replace" ? "Replaced" : "Dropped"} <span className="line-through">{o.removed_name}</span></div>
+                            <div key={i} className="border border-[#E4E2DC] bg-white rounded-lg p-3">
+                              <div className="text-[10px] font-bold text-[#667085]">
+                                {o.type === "replace" ? "REPLACED" : "DROPPED"}{" "}
+                                <span className="line-through">{o.removed_name}</span>
+                              </div>
                               {o.added ? (
                                 <>
-                                  <div className="mt-0.5 flex items-center gap-2 font-display text-[17px] font-bold leading-tight"><ArrowRight className="h-4 w-4 shrink-0 text-ok" />{o.added.name}</div>
-                                  <div className="tnum mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-ink-600">
+                                  <div className="mt-1 flex items-center gap-2 text-[13px] font-bold text-[#151A23]">
+                                    <ArrowRight className="h-3.5 w-3.5 text-[#168A5B] shrink-0" />
+                                    {o.added.name}
+                                  </div>
+                                  <div className="tnum mt-1 flex flex-wrap gap-x-3 text-[10.5px] text-[#4B5563] font-medium">
                                     <span>arrive <b>{fmtClock(o.arrival_min)}</b></span>
-                                    <span>{o.status ? STATUS_LABEL[o.status] : ""}</span>
-                                    <span>+{Math.round(o.detour_min ?? 0)} min detour</span>
+                                    <span>+{Math.round(o.detour_min ?? 0)}m detour</span>
                                   </div>
                                 </>
-                              ) : <p className="mt-1 text-[13px] text-ink-600">No validated alternative at that point of the day.</p>}
-                            </li>
+                              ) : (
+                                <p className="mt-1 text-[11.5px] text-[#667085] font-medium">No validated alternative.</p>
+                              )}
+                            </div>
                           ))}
-                        </ul>
-                        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                          <div className="rounded-xl bg-white p-2"><div className="tnum font-display text-lg font-extrabold">{rec.extra_travel_minutes >= 0 ? "+" : ""}{rec.extra_travel_minutes}m</div><div className="eyebrow !text-[9px]">travel</div></div>
-                          <div className="rounded-xl bg-white p-2"><div className="tnum font-display text-lg font-extrabold">{rec.experiences_preserved}/{rec.experiences_total}</div><div className="eyebrow !text-[9px]">preserved</div></div>
-                          <div className="rounded-xl bg-white p-2"><div className="tnum font-display text-lg font-extrabold">{fmtClock(rec.arrive_after_min, { short: true })}</div><div className="eyebrow !text-[9px]">arrive</div></div>
                         </div>
-                        <button onClick={() => setWhyOpen((w) => !w)} className="mt-3 text-[12.5px] font-bold text-accent-600">{whyOpen ? "Hide" : "Why?"}</button>
-                        <AnimatePresence>{whyOpen && <motion.p initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden pt-1 text-[13px] leading-relaxed text-ink-700">{rec.narrative}<span className="mt-1 block text-[11px] text-ink-500">{rec.narrative_engine === "groq" ? "Explained by Groq" : "Rule-based explanation"} · replacements validated by the temporal engine.</span></motion.p>}</AnimatePresence>
-                        <Button variant="accent" size="lg" className="mt-4 w-full uppercase tracking-wide" onClick={() => apply.mutate({ journey_id: id, apply_recovery: { journey_id: id, scenario: r.scenario as Scenario, minutes: r.minutes, stop_id: r.stop_id ?? undefined } })} disabled={apply.isPending}>
-                          {apply.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wrench className="h-5 w-5" />} Apply recovery
+
+                        {/* Recovery stats */}
+                        <div className="mt-3 grid grid-cols-3 gap-px bg-[#E4E2DC] border border-[#E4E2DC] rounded-lg overflow-hidden">
+                          {[
+                            { label: "TRAVEL", value: `${rec.extra_travel_minutes >= 0 ? "+" : ""}${rec.extra_travel_minutes}m` },
+                            { label: "KEPT",   value: `${rec.experiences_preserved}/${rec.experiences_total}` },
+                            { label: "ARRIVE", value: fmtClock(rec.arrive_after_min, { short: true }) },
+                          ].map((s) => (
+                            <div key={s.label} className="bg-white p-2 text-center">
+                              <div className="tnum text-[14px] font-bold text-[#151A23]">{s.value}</div>
+                              <div className="eyebrow text-[9px] text-[#667085] font-bold mt-0.5">{s.label}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Why */}
+                        <button onClick={() => setWhyOpen((w) => !w)} className="mt-3 text-[11px] font-bold text-[#F45B22] hover:underline cursor-pointer">
+                          {whyOpen ? "Hide explanation" : "Why these replacements?"}
+                        </button>
+                        <AnimatePresence>
+                          {whyOpen && (
+                            <motion.p
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden pt-2 text-[11.5px] leading-relaxed text-[#2D3440] font-medium"
+                            >
+                              {rec.narrative}
+                            </motion.p>
+                          )}
+                        </AnimatePresence>
+
+                        <Button
+                          variant="accent"
+                          className="mt-4 w-full cursor-pointer"
+                          onClick={() => apply.mutate({
+                            journey_id: id,
+                            apply_recovery: { journey_id: id, scenario: r.scenario as Scenario, minutes: r.minutes, stop_id: r.stop_id ?? undefined },
+                          })}
+                          disabled={apply.isPending}
+                        >
+                          {apply.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
+                          APPLY RECOVERY
                         </Button>
-                      </section>
+                      </div>
                     )}
                   </div>
-
-                  {rec && (
-                    <section className="card p-4 md:p-6">
-                      <h3 className="font-display text-xl font-bold">Original vs recovered</h3>
-                      <p className="text-[13px] text-ink-500">Same journey, same day — before and after the disruption.</p>
-                      <div className="mt-4 grid gap-6 md:grid-cols-2">
-                        <div>
-                          <div className="eyebrow mb-1">Original · arrives {fmtClock(rec.arrive_before_min)}</div>
-                          <ul className="divide-y divide-line">{j.waypoints.map((w) => <WaypointMini key={w.id} w={w} />)}</ul>
-                        </div>
-                        <div>
-                          <div className="eyebrow mb-1 !text-accent-600">Recovered · arrives {fmtClock(rec.arrive_after_min)}</div>
-                          <ul className="divide-y divide-line">{rec.new_waypoints.map((w) => <WaypointMini key={w.id} w={w} tag={j.waypoints.some((o) => o.id === w.id) ? undefined : "new"} />)}</ul>
-                        </div>
-                      </div>
-                    </section>
-                  )}
-
-                  <section className="card p-4 md:p-6">
-                    <h3 className="font-display text-xl font-bold">Time buffer per stop</h3>
-                    <p className="text-[13px] text-ink-500">Minutes of slack before each stop's window closes (capped at 2 h). Broken stops drop to zero. <ProvenanceChip provenance="simulated" compact /></p>
-                    <div className="mt-4 h-60" role="img" aria-label="Bar chart of time buffer per stop before and after the disruption">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chart} margin={{ top: 8, right: 8, left: -18, bottom: 0 }} barCategoryGap={18}>
-                          <CartesianGrid vertical={false} stroke="#E7E0D3" />
-                          <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#5B6F69" }} tickLine={false} axisLine={false} interval={0} />
-                          <YAxis tick={{ fontSize: 11, fill: "#5B6F69" }} tickLine={false} axisLine={false} unit="m" domain={[0, CAP]} ticks={[0, 30, 60, 90, 120]} />
-                          <Tooltip cursor={{ fill: "rgba(16,33,29,.05)" }} contentStyle={{ borderRadius: 12, border: "1px solid #E7E0D3", fontSize: 12 }} />
-                          <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
-                          <Bar dataKey="before" name="Before" fill="#B6C1BD" radius={[6, 6, 0, 0]} isAnimationActive={false} />
-                          <Bar dataKey="after" name="After disruption" radius={[6, 6, 0, 0]} isAnimationActive={false}>
-                            {chart.map((c, i) => <Cell key={i} fill={c.red ? "#D3402F" : "#E8501C"} />)}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </section>
                 </motion.div>
               )}
             </AnimatePresence>
 
+            {/* Empty state */}
             {!r && !sim.isPending && (
-              <div className="rounded-3xl border border-dashed border-line bg-white/60 p-8 text-center">
-                <FastForward className="mx-auto mb-2 h-7 w-7 text-accent" />
-                <p className="font-display text-lg font-bold">Pick a scenario above</p>
-                <p className="mx-auto mt-1 max-w-md text-sm text-ink-600">Try <b>+45 min delay</b> — then watch WAYPOINTS find what breaks and repair it with a stop it has already validated.</p>
-                <Button variant="accent" className="mt-4" onClick={() => run(SCENARIOS[1])}>Simulate +45 min delay</Button>
+              <div className="border border-[#E4E2DC] bg-white rounded-xl p-8 text-center shadow-sm">
+                <div className="eyebrow text-[10px] tracking-[0.14em] text-[#667085] font-bold mb-2">READY TO SIMULATE</div>
+                <p className="text-[13px] text-[#4B5563] font-medium">
+                  Try <b className="text-[#151A23] font-bold">+45 min delay</b> — the demo scenario.
+                </p>
+                <Button variant="accent" className="mt-4 cursor-pointer" onClick={() => run(SCENARIOS[1])}>
+                  Simulate +45 min delay
+                </Button>
               </div>
             )}
           </>
         )}
-        <div className="pt-2 text-center"><Link to={`/route/${id}`} className="text-sm font-semibold text-ink-500 underline-offset-4 hover:text-accent hover:underline">← Back to the route</Link></div>
+
+        <div className="pt-2 text-center">
+          <Link to={`/route/${id}`} className="text-[11.5px] font-semibold text-[#667085] hover:text-[#151A23] transition-colors">
+            ← Back to route
+          </Link>
+        </div>
       </main>
     </motion.div>
   );

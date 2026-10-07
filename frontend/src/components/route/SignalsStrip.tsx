@@ -1,29 +1,39 @@
-import { CalendarDays, Newspaper, Sunset, TriangleAlert } from "lucide-react";
 import type { CurrentSignal } from "@/lib/types";
-import { fmtClock } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
-export function SignalsStrip({ signals, onOpen }: { signals: CurrentSignal[]; onOpen: (s: CurrentSignal) => void }) {
-  if (!signals.length) return null;
+interface Props {
+  signals: CurrentSignal[];
+  onOpen?: (s: CurrentSignal) => void;
+}
+
+export function SignalsStrip({ signals, onOpen }: Props) {
+  if (!signals || signals.length === 0) return null;
+
   return (
-    <div className="scroll-thin -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-      {signals.map((s) => {
-        const Icon = s.kind === "sunset" ? Sunset : s.kind === "event" ? CalendarDays : s.kind === "closure" ? TriangleAlert : Newspaper;
-        const sev = s.severity === "warn" ? "border-bad-100 bg-bad-50 text-bad" : s.severity === "watch" ? "border-warn-100 bg-warn-50 text-[#8a6100]" : "border-line bg-white text-ink-600";
-        return (
-          <button key={s.id} onClick={() => onOpen(s)} className={cn("flex max-w-[260px] shrink-0 items-start gap-2 rounded-xl border px-3 py-2 text-left transition hover:shadow-card active:scale-[0.98]", sev)}>
-            <Icon className="mt-0.5 h-4 w-4 shrink-0" />
-            <span className="min-w-0">
-              <span className="block truncate text-[12.5px] font-bold leading-tight">{s.title}</span>
-              <span className="block truncate text-[11px] opacity-70">
-                {s.kind === "event" && s.start_min != null ? `${fmtClock(s.start_min)}–${fmtClock(s.end_min)} · ` : ""}
-                {s.publisher ?? (s.provenance === "inferred" ? "computed" : "Google Events")}
-                {s.date ? ` · ${s.date}` : ""}
-              </span>
-            </span>
+    <div className="border border-[#E4E2DC] bg-white rounded-xl overflow-hidden shadow-sm">
+      <div className="eyebrow px-4 py-3 border-b border-[#E4E2DC] text-[10px] tracking-[0.14em] text-[#667085] font-bold">
+        LIVE SIGNALS
+      </div>
+      <div className="divide-y divide-[#E4E2DC]">
+        {signals.slice(0, 4).map((s, i) => (
+          <button
+            key={i}
+            onClick={() => onOpen?.(s)}
+            className="w-full flex items-start gap-2.5 px-4 py-3 text-left hover:bg-[#FAFAF8] transition-colors cursor-pointer"
+          >
+            <span className={cn(
+              "status-dot shrink-0 mt-1.5",
+              s.severity === "warn"  ? "closed" :
+              s.severity === "watch" ? "closing" : "open"
+            )} />
+            <div className="min-w-0 flex-1">
+              <div className="text-[12px] font-bold text-[#151A23] truncate">{s.title}</div>
+              <div className="text-[11px] text-[#4B5563] font-medium mt-0.5 leading-snug line-clamp-1">{s.detail}</div>
+            </div>
+            <span className="text-[9.5px] text-[#667085] shrink-0 uppercase tracking-wider font-bold">{s.kind}</span>
           </button>
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 }

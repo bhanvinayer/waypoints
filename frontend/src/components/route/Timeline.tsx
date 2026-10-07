@@ -1,55 +1,108 @@
-import { Car, Flag, Hourglass, MapPin } from "lucide-react";
+import { motion } from "framer-motion";
 import type { TimelineItem } from "@/lib/types";
-import { fmtClock } from "@/lib/time";
+import { fmtClock, fmtDuration } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
-export function Timeline({ items, selectedId, onSelect, order }: { items: TimelineItem[]; selectedId: string | null; onSelect: (id: string) => void; order: Record<string, number> }) {
+interface Props {
+  items: TimelineItem[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  order: Record<string, number>;
+}
+
+/**
+ * Timeline — journey thread visual.
+ * Thin vertical line connecting stops — the Waypoints signature motif.
+ */
+export function Timeline({ items, selectedId, onSelect, order }: Props) {
   return (
-    <ol className="relative">
-      <div aria-hidden className="absolute bottom-3 left-[19px] top-3 w-px bg-line" />
-      {items.map((it) => {
-        const isStop = it.kind === "stop";
-        const sel = isStop && it.node_id === selectedId;
-        const Icon = it.kind === "start" ? MapPin : it.kind === "end" ? Flag : it.kind === "delay" ? Hourglass : Car;
+    <div className="relative">
+      {items.map((item, i) => {
+        const isStop = item.kind === "stop";
+        const isSelected = selectedId === item.node_id;
+        const isFirst = i === 0;
+        const isLast = i === items.length - 1;
+        const tone = item.tone ?? "gray";
+
         return (
-          <li key={it.id} className="relative pl-12">
-            <div className="absolute left-0 top-0 grid h-10 w-10 place-items-center">
+          <motion.div
+            key={item.id ?? i}
+            initial={{ opacity: 0, x: -3 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.04, duration: 0.15 }}
+            className="flex items-stretch gap-3"
+          >
+            {/* Thread column */}
+            <div className="flex flex-col items-center w-5 shrink-0">
+              {/* Line above */}
+              {!isFirst && (
+                <div className={cn(
+                  "w-px flex-none",
+                  tone === "green" ? "h-3 bg-[#168A5B]" :
+                  tone === "yellow" ? "h-3 bg-[#C77A16]" :
+                  tone === "red" ? "h-3 bg-[#C94A4A]" : "h-3 bg-[#E4E2DC]"
+                )} />
+              )}
+              {isFirst && <div className="h-3" />}
+
+              {/* Node */}
               {isStop ? (
-                <span className={cn("grid h-8 w-8 place-items-center rounded-full border-[3px] border-sand font-display text-[13px] font-extrabold text-white shadow", it.tone === "green" ? "bg-ok" : it.tone === "yellow" ? "bg-warn" : "bg-bad", sel && "ring-4 ring-accent/30")}>
-                  {order[it.node_id ?? ""] ?? ""}
-                </span>
+                <button
+                  onClick={() => item.node_id && onSelect(item.node_id)}
+                  className={cn(
+                    "thread-node shrink-0 transition-all cursor-pointer",
+                    tone === "green"  ? "ok" :
+                    tone === "yellow" ? "warn" :
+                    tone === "red"    ? "bad" :
+                    isSelected        ? "active" : ""
+                  )}
+                  style={{ width: "20px", height: "20px", fontSize: "9px" }}
+                >
+                  {order[item.node_id ?? ""] ?? "·"}
+                </button>
               ) : (
-                <span className={cn("grid h-6 w-6 place-items-center rounded-full border-2 bg-sand", it.kind === "delay" ? "border-warn text-warn" : it.kind === "drive" ? "border-line text-ink-400" : "border-ink text-ink")}>
-                  <Icon className="h-3 w-3" />
-                </span>
+                <div
+                  className="h-1.5 w-1.5 rounded-full shrink-0"
+                  style={{ background: "#98A2B3" }}
+                />
+              )}
+
+              {/* Line below */}
+              {!isLast && (
+                <div className="w-px flex-1 min-h-[8px]" style={{ background: "#E4E2DC" }} />
               )}
             </div>
-            {isStop ? (
-              <button
-                onClick={() => it.node_id && onSelect(it.node_id)}
-                className={cn("mb-1.5 flex w-full items-start justify-between gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-white", sel && "bg-white shadow-card")}
-              >
-                <div className="min-w-0">
-                  <div className="truncate font-display text-[15px] font-bold leading-tight">{it.title}</div>
-                  <div className="truncate text-[12px] text-ink-500">{it.subtitle}</div>
-                </div>
-                <div className="tnum shrink-0 text-right text-[12px] font-semibold text-ink-600">
-                  <div className="text-[13px] font-bold text-ink">{fmtClock(it.start_min)}</div>
-                  <div className="text-ink-400">→ {fmtClock(it.end_min)}</div>
-                </div>
-              </button>
-            ) : (
-              <div className="mb-1 flex min-h-8 items-center justify-between gap-3 px-3 py-1 text-[12px]">
-                <div className="min-w-0 truncate">
-                  <span className={cn("font-semibold", it.kind === "drive" ? "text-ink-400" : "text-ink-700")}>{it.title}</span>
-                  {it.subtitle && <span className="text-ink-400"> · {it.subtitle}</span>}
-                </div>
-                <span className="tnum shrink-0 font-semibold text-ink-500">{fmtClock(it.start_min)}</span>
+
+            {/* Content */}
+            <div
+              className={cn(
+                "flex-1 min-w-0 pb-3",
+                isLast && "pb-0",
+                isStop && item.node_id && "cursor-pointer"
+              )}
+              onClick={() => isStop && item.node_id && onSelect(item.node_id)}
+            >
+              {/* Time */}
+              <div className="tnum text-[10px] text-[#667085] font-semibold mb-0.5">{fmtClock(item.start_min)}</div>
+
+              {/* Label */}
+              <div className={cn(
+                "text-[12px] font-bold leading-tight",
+                isStop
+                  ? tone === "red" ? "text-[#C94A4A] line-through" : isSelected ? "text-[#F45B22]" : "text-[#151A23]"
+                  : "text-[#4B5563]"
+              )}>
+                {item.title}
               </div>
-            )}
-          </li>
+
+              {/* Detail */}
+              {item.subtitle && (
+                <div className="tnum text-[10.5px] text-[#667085] font-medium mt-0.5">{item.subtitle}</div>
+              )}
+            </div>
+          </motion.div>
         );
       })}
-    </ol>
+    </div>
   );
 }

@@ -27,7 +27,7 @@ export function Sheet({ open, onOpenChange, title, eyebrow, description, childre
             "inset-x-0 bottom-0 max-h-[90dvh] rounded-t-[28px] data-[state=open]:animate-sheet-up data-[state=closed]:animate-sheet-down",
             "md:inset-y-0 md:left-auto md:right-0 md:bottom-auto md:max-h-none md:rounded-l-[28px] md:rounded-tr-none md:data-[state=open]:animate-sheet-in md:data-[state=closed]:animate-sheet-out",
             width,
-            tone === "dark" ? "bg-night text-white" : "bg-sand text-ink",
+            tone === "dark" ? "bg-night text-white" : "bg-bg text-ink",
           )}
         >
           <div className={cn("flex items-start justify-between gap-4 px-5 pb-3 pt-5", tone === "dark" ? "border-b border-white/10" : "border-b border-line")}>
@@ -42,7 +42,7 @@ export function Sheet({ open, onOpenChange, title, eyebrow, description, childre
             </div>
             <Dialog.Close
               aria-label="Close"
-              className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full transition", tone === "dark" ? "bg-white/10 hover:bg-white/20" : "bg-white hover:bg-sand-200")}
+              className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full transition", tone === "dark" ? "bg-white/10 hover:bg-white/20" : "bg-white hover:bg-bg-200")}
             >
               <X className="h-4 w-4" />
             </Dialog.Close>

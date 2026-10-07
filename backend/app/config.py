@@ -22,7 +22,7 @@ def _bool(name: str, default: bool = False) -> bool:
 class Settings:
     serpapi_key: str = field(default_factory=lambda: os.getenv("SERPAPI_KEY", "").strip())
     groq_api_key: str = field(default_factory=lambda: os.getenv("GROQ_API_KEY", "").strip())
-    groq_model: str = field(default_factory=lambda: os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile").strip())
+    groq_model: str = field(default_factory=lambda: os.getenv("GROQ_MODEL", "openai/gpt-oss-20b").strip())
     demo_mode: bool = field(default_factory=lambda: _bool("DEMO_MODE", False))
     max_calls_per_journey: int = field(default_factory=lambda: int(os.getenv("SERPAPI_MAX_CALLS_PER_JOURNEY", "70")))
     cors_origins: list[str] = field(

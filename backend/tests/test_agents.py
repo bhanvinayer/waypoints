@@ -15,7 +15,7 @@ def groq_returning(payload: dict):
         assert body["response_format"] == {"type": "json_object"} and body["temperature"] == 0.0
         return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(payload)}}]})
 
-    client = GroqClient(settings=Settings(groq_api_key="gk_test", groq_model="llama-3.3-70b-versatile"), transport=httpx.MockTransport(handler))
+    client = GroqClient(settings=Settings(groq_api_key="gk_test", groq_model="openai/gpt-oss-20b"), transport=httpx.MockTransport(handler))
     set_groq(client)
     return client
 

@@ -1,37 +1,66 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
-import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-semibold transition-all duration-200 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 select-none",
-  {
-    variants: {
-      variant: {
-        accent: "bg-accent text-white shadow-[0_8px_20px_-8px_rgba(232,80,28,0.8)] hover:bg-accent-600",
-        ink: "bg-ink text-white hover:bg-ink-700",
-        outline: "border border-line bg-white text-ink hover:border-ink-300 hover:bg-sand-100",
-        ghost: "text-ink-600 hover:bg-sand-200",
-        soft: "bg-accent-50 text-accent-600 hover:bg-accent-100",
-        danger: "bg-bad text-white hover:bg-[#b9362a]",
-      },
-      size: {
-        sm: "h-9 px-4 text-[13px]",
-        md: "h-11 px-5 text-sm",
-        lg: "h-14 px-8 text-base",
-        icon: "h-10 w-10",
-      },
-    },
-    defaultVariants: { variant: "ink", size: "md" },
-  },
-);
-
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "accent" | "outline" | "ghost" | "ink" | "destructive";
+  size?: "sm" | "default" | "lg" | "icon";
   asChild?: boolean;
 }
 
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({ className, variant, size, asChild, ...props }, ref) => {
-  const Comp = asChild ? Slot : "button";
-  return <Comp ref={ref} className={cn(buttonVariants({ variant, size }), className)} {...props} />;
-});
+/**
+ * Button — system-level control.
+ * Sharp corners. Dark base. No pill shapes.
+ * Orange for primary action. White outline for secondary.
+ */
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant = "outline", size = "default", asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button";
+    return (
+      <Comp
+        ref={ref}
+        className={cn(
+          // Base — all buttons share these
+          "inline-flex items-center justify-center gap-2 font-semibold transition-colors",
+          "disabled:opacity-40 disabled:cursor-not-allowed",
+          "focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent",
+          "active:scale-[0.98]",
+
+          // Variants
+          variant === "accent" && [
+            "bg-accent text-white hover:bg-accent-600",
+            "border border-transparent",
+          ],
+          variant === "outline" && [
+            "bg-transparent text-ink-800 hover:text-white hover:border-[#383838]",
+            "border border-[#2A2A2A]",
+          ],
+          variant === "ghost" && [
+            "bg-transparent text-graphite-100 hover:text-white hover:bg-[#1A1A1A]",
+            "border border-transparent",
+          ],
+          variant === "ink" && [
+            "bg-[#1A1A1A] text-ink-900 hover:bg-[#222222]",
+            "border border-[#2A2A2A]",
+          ],
+          variant === "destructive" && [
+            "bg-bad text-white hover:bg-bad-600",
+            "border border-transparent",
+          ],
+
+          // Sizes
+          size === "sm"      && "h-7 px-3 text-[11px] tracking-wide",
+          size === "default" && "h-9 px-4 text-[12px] tracking-wide",
+          size === "lg"      && "h-10 px-5 text-[13px] tracking-wide",
+          size === "icon"    && "h-8 w-8 p-0",
+
+          className
+        )}
+        {...props}
+      />
+    );
+  }
+);
 Button.displayName = "Button";
+
+export { Button };

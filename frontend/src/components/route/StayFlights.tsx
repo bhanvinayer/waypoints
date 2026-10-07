@@ -1,38 +1,52 @@
-import { BedDouble, ExternalLink, Plane, Star } from "lucide-react";
-import type { FlightOption, StaySuggestion } from "@/lib/types";
-import { fmtDuration } from "@/lib/time";
+import type { StaySuggestion, FlightOption } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
-export function StayFlights({ stay, flights, destination }: { stay: StaySuggestion[]; flights: FlightOption[]; destination: string }) {
-  if (!stay.length && !flights.length) return null;
+interface Props {
+  stay?: StaySuggestion | null;
+  flights?: FlightOption[] | null;
+  destination: string;
+}
+
+export function StayFlights({ stay, flights, destination }: Props) {
+  if (!stay && (!flights || flights.length === 0)) return null;
+
   return (
-    <div className="space-y-3">
-      {flights.length > 0 && (
-        <div className="rounded-2xl border border-line bg-white p-3.5">
-          <div className="mb-2 flex items-center gap-2"><Plane className="h-4 w-4 text-accent" /><span className="eyebrow">Or fly instead · Google Flights</span></div>
-          {flights.map((f, i) => (
-            <div key={i} className="flex items-center justify-between border-t border-line py-2 first:border-t-0 text-[13px]">
-              <span className="font-semibold">{f.airline ?? "Flight"}{f.stops ? ` · ${f.stops} stop` : " · non-stop"}</span>
-              <span className="tnum text-ink-600">{fmtDuration(f.duration_min)} · <b className="text-ink">{f.price_text ?? "—"}</b></span>
+    <div className="border border-[#2A2A2A]">
+      <div className="eyebrow px-3 py-2 border-b border-[#1E1E1E]">STAY + FLIGHTS · {destination.toUpperCase()}</div>
+
+      {stay && (
+        <div className="px-3 py-2.5 border-b border-[#1E1E1E]">
+          <div className="eyebrow mb-1.5">ACCOMMODATION</div>
+          <div className="text-[12px] font-bold text-white">{stay.name}</div>
+          {stay.price_text && (
+            <div className="tnum text-[11px] text-graphite-200 mt-0.5">
+              {stay.price_text} / night
             </div>
-          ))}
+          )}
+          {stay.link && (
+            <a href={stay.link} target="_blank" rel="noreferrer" className="mt-1 text-[10.5px] text-accent hover:underline block">
+              View hotel →
+            </a>
+          )}
         </div>
       )}
-      {stay.length > 0 && (
-        <div className="rounded-2xl border border-line bg-white p-3.5">
-          <div className="mb-2 flex items-center gap-2"><BedDouble className="h-4 w-4 text-accent" /><span className="eyebrow">Where to end the night in {destination} · Google Hotels</span></div>
-          {stay.map((s) => (
-            <div key={s.name} className="flex items-center justify-between gap-3 border-t border-line py-2 first:border-t-0 text-[13px]">
-              <div className="min-w-0">
-                <div className="truncate font-semibold">{s.name}</div>
-                <div className="text-[11.5px] text-ink-500">{s.hotel_class}</div>
+
+      {flights && flights.length > 0 && (
+        <div className="px-3 py-2.5">
+          <div className="eyebrow mb-1.5">FLIGHTS</div>
+          <div className="space-y-2">
+            {flights.slice(0, 2).map((f, i) => (
+              <div key={i} className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-[11.5px] font-semibold text-white">{f.airline}</div>
+                  <div className="tnum text-[10px] text-graphite-300">{f.departure} → {f.arrival}</div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="tnum text-[12px] font-bold text-white">{f.price_text}</div>
+                </div>
               </div>
-              <div className="shrink-0 text-right">
-                {s.rating != null && <div className="flex items-center justify-end gap-1 text-[12px] font-bold"><Star className="h-3 w-3 fill-warn text-warn" />{s.rating.toFixed(1)}</div>}
-                <div className="tnum text-[12.5px] font-bold">{s.price_text ?? "—"}<span className="font-medium text-ink-400">/night</span></div>
-              </div>
-              {s.link && <a href={s.link} target="_blank" rel="noreferrer noopener" aria-label={`Open ${s.name}`} className="text-ink-300 hover:text-accent"><ExternalLink className="h-4 w-4" /></a>}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>

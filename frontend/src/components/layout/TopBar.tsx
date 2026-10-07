@@ -4,12 +4,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Activity, Menu, Moon, Sun, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** Waypoints wordmark — clean light editorial style */
+/** Waypoints wordmark — 4-point orange star + editorial typography matching mockup */
 function WaypointsWordmark({ className }: { className?: string }) {
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <div className="w-2.5 h-2.5 rounded-full bg-accent border-2 border-white shadow-sm" />
-      <span className="font-mono text-xs font-bold tracking-[0.16em] text-[#151A23] uppercase">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#F45B22" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+        <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
+      </svg>
+      <span className="font-sans text-xs font-bold tracking-[0.14em] text-[#151A23] uppercase">
         WAYPOINTS
       </span>
     </div>
@@ -132,14 +134,6 @@ export function TopBar({ mode, since, journeyId, onOpenTrace }: TopBarProps) {
                 TRACE
               </button>
             )}
-
-            {/* Sign in link */}
-            <Link
-              to="/auth"
-              className="text-xs font-semibold text-[#151A23] hover:text-accent transition-colors px-2"
-            >
-              Sign in
-            </Link>
           </div>
 
           {/* ── Mobile menu toggle ── */}
@@ -209,14 +203,6 @@ export function TopBar({ mode, since, journeyId, onOpenTrace }: TopBarProps) {
                   </NavLink>
                 </>
               )}
-
-              <Link
-                to="/auth"
-                onClick={() => setMobileOpen(false)}
-                className="px-3 py-2 text-xs font-semibold text-[#151A23] hover:text-accent"
-              >
-                Sign in
-              </Link>
             </nav>
           </motion.div>
         )}

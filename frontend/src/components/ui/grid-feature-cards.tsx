@@ -17,7 +17,7 @@ export function FeatureCard({ feature, className, ...props }: FeatureCardProps) 
       <div className="w-9 h-9 rounded-lg bg-[#FFF4EF] border border-[#F45B22]/20 flex items-center justify-center mb-4">
         <feature.icon className="text-[#F45B22] h-5 w-5" strokeWidth={1.8} aria-hidden />
       </div>
-      <h3 className="font-author text-base font-bold text-[#151A23] mb-1.5 leading-snug">
+      <h3 className="font-author text-base font-bold text-[#333742] mb-1.5 leading-snug">
         {feature.title}
       </h3>
       <p className="text-xs font-medium leading-relaxed text-[#2D3440]">

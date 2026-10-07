@@ -5,17 +5,11 @@ import type { TemporalStatus, Tone } from "@/lib/types";
 export function DataBadge({ mode }: { mode?: "live" | "demo" }) {
   if (!mode) return null;
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.14em]",
-        "px-2 py-1 border",
-        mode === "live"
-          ? "border-ok/30 bg-[rgba(34,197,94,0.08)] text-ok"
-          : "border-warn/30 bg-[rgba(234,179,8,0.08)] text-warn"
-      )}
-    >
-      <span className={cn("h-1.5 w-1.5 rounded-full", mode === "live" ? "bg-ok" : "bg-warn")} />
-      {mode === "live" ? "Live Data" : "Demo Snapshot"}
+    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em]">
+      <span className={cn("h-1.5 w-1.5 rounded-full", mode === "live" ? "bg-[#168A5B]" : "bg-[#F45B22]")} />
+      <span className={mode === "live" ? "text-[#168A5B]" : "text-[#F45B22]"}>
+        {mode === "live" ? "Live Data" : "Demo Snapshot"}
+      </span>
     </span>
   );
 }

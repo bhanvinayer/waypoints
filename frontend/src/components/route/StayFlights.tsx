@@ -98,4 +98,3 @@ export function StayFlights({ stay, flights, destination }: Props) {
     </div>
   );
 }
-

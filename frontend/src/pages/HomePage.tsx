@@ -7,9 +7,24 @@ import {
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { RouteCommandBar, DemoButton } from "@/components/home/PlanForm";
+import { WaypointsShuffleGrid, type ShuffleFeature } from "@/components/home/WaypointsShuffleGrid";
 import { MAP_STYLES, DEFAULT_MAP_STYLE, getSafeMapStyle, type MapStyleKey } from "@/lib/map-styles";
 import { MapStyleSelector } from "@/components/route/MapControls";
 import { cn } from "@/lib/utils";
+
+// ---------------------------------------------------------------------------
+// "What makes it different" shuffle grid data
+// ---------------------------------------------------------------------------
+
+const PRINCIPLES: ShuffleFeature[] = [
+  { id: "temporal-city-graph",   Icon: Clock,     title: "Temporal City Graph",   description: "A place isn't good or bad — it's good at 4 PM and closed at 8 PM. Every experience is scored for the moment you'll be there." },
+  { id: "route-aware-discovery", Icon: Map,        title: "Route-aware discovery", description: "We search along the real corridor, not inside the destination. Things worth stopping for — not things to do in Jaipur." },
+  { id: "experience-windows",    Icon: ArrowRight, title: "Experience windows",    description: "Hours, events and golden hour become windows. A stop only makes your route if you can really experience it." },
+  { id: "detour-economics",      Icon: RefreshCw,  title: "Detour economics",      description: "+12 min beats +2 km. Every stop shows what it costs in minutes, kilometres and rupees." },
+  { id: "plan-stress-test",      Icon: Zap,        title: "Plan stress test",      description: "Delay it. Close a stop. Push the event. We re-run the whole temporal graph and show what breaks." },
+  { id: "automatic-recovery",    Icon: Search,     title: "Automatic recovery",    description: "Broken stops are replaced by alternatives the backend has already validated — not by a chatbot's guess." },
+  { id: "evidence-first-ai",     Icon: Star,       title: "Evidence-first AI",     description: "SerpApi supplies the facts. Open-source LLMs on Groq only reason over them. Observed, inferred and simulated are never mixed." },
+];
 
 // Demo corridor coordinates (Delhi → Neemrana → Alwar → Jaipur)
 const DEMO_ROUTE_POINTS: [number, number][] = [
@@ -418,6 +433,28 @@ export default function HomePage() {
         </div>
 
       </div>
+
+      {/* ── "WHAT MAKES IT DIFFERENT" shuffle grid ── */}
+      <section className="border-b border-[#E4E2DC] bg-white">
+        <div className="mx-auto max-w-[1240px] px-4 py-14 md:px-6">
+          <div className="grid gap-10 lg:grid-cols-[42%_1fr] lg:items-start">
+            <div className="lg:sticky lg:top-24">
+              <div className="eyebrow mb-3 text-[13px] tracking-[0.16em] text-[#667085]">What makes it different</div>
+              <h2 className="font-display text-[36px] font-extrabold leading-[1.06] tracking-tight text-[#151A23] md:text-[44px] lg:text-[46px]">
+                Not a list of places.<br />A route that survives<br />reality.
+              </h2>
+              <p className="mt-5 max-w-md text-[18px] leading-[1.55] text-[#4B5563] lg:text-[19px]">
+                Itinerary planners optimise <i>where</i> you go. WAYPOINTS optimises whether the experience will still work when you actually get there — and proves it by breaking your plan on purpose.
+              </p>
+              <p className="mt-6 flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.1em] text-[#667085]">
+                <span aria-hidden className="inline-block h-1.5 w-1.5 animate-[floaty_2.4s_ease-in-out_infinite] rounded-full bg-[#168A5B]" />
+                Route continuously recalculating
+              </p>
+            </div>
+            <WaypointsShuffleGrid features={PRINCIPLES} interval={2800} />
+          </div>
+        </div>
+      </section>
 
       {/*
         ─── BELOW-THE-FOLD: HOW WAYPOINTS WORKS (INTERACTIVE 6-STAGE PIPELINE) ────

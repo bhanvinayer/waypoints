@@ -51,7 +51,7 @@ function Skeleton() {
   return (
     <div className="min-h-dvh bg-[#F8F7F3]">
       <TopBar />
-      <div className="lg:grid lg:grid-cols-[400px_1fr]">
+      <div className="lg:grid lg:grid-cols-[460px_1fr]">
         <div className="space-y-2 p-4">
           {[40, 24, 64, 40, 32].map((h, i) => (
             <div key={i} className="skeleton" style={{ height: `${h * 4}px` }} />
@@ -182,7 +182,7 @@ export default function RoutePage() {
         journeyId={id}
       />
 
-      <div className="flex flex-col lg:grid lg:grid-cols-[400px_1fr]">
+      <div className="flex flex-col lg:grid lg:grid-cols-[460px_1fr]">
 
         {/* ── Map — right col on desktop, top on mobile ── */}
         <div className="sticky top-12 z-30 order-1 lg:order-2 lg:h-[calc(100dvh-48px)]">

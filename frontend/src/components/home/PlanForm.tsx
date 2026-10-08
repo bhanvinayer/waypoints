@@ -83,10 +83,10 @@ export function RouteCommandBar({ className }: { className?: string }) {
         {/* ── Row 1: FROM / TO ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-[#E4E2DC] border border-[#E4E2DC] rounded-lg overflow-hidden">
           {/* FROM */}
-          <div className="bg-white p-3 flex flex-col justify-center">
-            <span className="eyebrow text-[10px] tracking-[0.14em] text-[#667085] uppercase mb-1 font-bold">FROM</span>
+          <div className="bg-white p-3.5 flex flex-col justify-center">
+            <span className="eyebrow text-[11px] tracking-[0.14em] text-[#667085] uppercase mb-1 font-bold">FROM</span>
             <input
-              className="cmd-field text-sm font-semibold text-[#151A23] bg-white outline-none placeholder:text-[#98A2B3]"
+              className="cmd-field text-[15px] font-semibold text-[#151A23] bg-white outline-none placeholder:text-[#98A2B3]"
               placeholder="Delhi"
               value={origin}
               onChange={(e) => setOrigin(e.target.value)}
@@ -96,19 +96,19 @@ export function RouteCommandBar({ className }: { className?: string }) {
           </div>
 
           {/* TO */}
-          <div className="bg-white p-3 flex flex-col justify-center relative">
+          <div className="bg-white p-3.5 flex flex-col justify-center relative">
             <button
               type="button"
               onClick={() => { setOrigin(destination); setDestination(origin); }}
-              className="absolute right-3 top-3 text-[#98A2B3] hover:text-[#151A23] transition-colors cursor-pointer"
+              className="absolute right-3.5 top-3.5 text-[#98A2B3] hover:text-[#151A23] transition-colors cursor-pointer"
               aria-label="Swap cities"
               title="Swap origin and destination"
             >
-              <ArrowUpDown className="h-3.5 w-3.5" />
+              <ArrowUpDown className="h-4 w-4" />
             </button>
-            <span className="eyebrow text-[10px] tracking-[0.14em] text-[#667085] uppercase mb-1 font-bold">TO</span>
+            <span className="eyebrow text-[11px] tracking-[0.14em] text-[#667085] uppercase mb-1 font-bold">TO</span>
             <input
-              className="cmd-field text-sm font-semibold text-[#151A23] bg-white outline-none placeholder:text-[#98A2B3]"
+              className="cmd-field text-[15px] font-semibold text-[#151A23] bg-white outline-none placeholder:text-[#98A2B3]"
               placeholder="Jaipur"
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
@@ -121,11 +121,11 @@ export function RouteCommandBar({ className }: { className?: string }) {
         {/* ── Row 2: DATE / DEPARTURE ── */}
         <div className="grid grid-cols-2 gap-px bg-[#E4E2DC] border border-[#E4E2DC] rounded-lg overflow-hidden">
           {/* DATE */}
-          <div className="bg-white p-3 flex flex-col justify-center">
-            <span className="eyebrow text-[10px] tracking-[0.14em] text-[#667085] uppercase mb-1 font-bold">DATE</span>
+          <div className="bg-white p-3.5 flex flex-col justify-center">
+            <span className="eyebrow text-[11px] tracking-[0.14em] text-[#667085] uppercase mb-1 font-bold">DATE</span>
             <input
               type="date"
-              className="cmd-field text-xs font-semibold text-[#151A23] bg-white outline-none cursor-pointer"
+              className="cmd-field text-[13.5px] font-semibold text-[#151A23] bg-white outline-none cursor-pointer"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               required
@@ -133,11 +133,11 @@ export function RouteCommandBar({ className }: { className?: string }) {
           </div>
 
           {/* DEPARTURE */}
-          <div className="bg-white p-3 flex flex-col justify-center">
-            <span className="eyebrow text-[10px] tracking-[0.14em] text-[#667085] uppercase mb-1 font-bold">DEPARTURE</span>
+          <div className="bg-white p-3.5 flex flex-col justify-center">
+            <span className="eyebrow text-[11px] tracking-[0.14em] text-[#667085] uppercase mb-1 font-bold">DEPARTURE</span>
             <input
               type="time"
-              className="cmd-field tnum text-xs font-semibold text-[#151A23] bg-white outline-none cursor-pointer"
+              className="cmd-field tnum text-[13.5px] font-semibold text-[#151A23] bg-white outline-none cursor-pointer"
               value={time}
               onChange={(e) => setTime(e.target.value)}
               required
@@ -147,8 +147,8 @@ export function RouteCommandBar({ className }: { className?: string }) {
 
         {/* ── Row 3: INTERESTS ── */}
         <div>
-          <span className="eyebrow text-[10px] tracking-[0.14em] text-[#667085] uppercase block mb-2 font-bold">INTERESTS</span>
-          <div className="flex flex-wrap gap-1.5">
+          <span className="eyebrow text-[11px] tracking-[0.14em] text-[#667085] uppercase block mb-2 font-bold">INTERESTS</span>
+          <div className="flex flex-wrap gap-2">
             {INTERESTS.map((item) => {
               const active = interests.includes(item);
               return (
@@ -157,10 +157,10 @@ export function RouteCommandBar({ className }: { className?: string }) {
                   type="button"
                   onClick={() => toggleInterest(item)}
                   className={cn(
-                    "px-3 py-1.5 text-xs font-semibold rounded-[8px] border transition-colors cursor-pointer",
+                    "px-3.5 py-1.5 text-[13px] font-semibold rounded-full border transition-all duration-150 ease-out cursor-pointer active:scale-95",
                     active
-                      ? "bg-[#F45B22] border-[#F45B22] text-white"
-                      : "bg-white border-[#DDDAD2] text-[#151A23] hover:border-[#F45B22]"
+                      ? "bg-[#F45B22] border-[#F45B22] text-white shadow-xs"
+                      : "bg-white border-[#E4E2DC] text-[#151A23] hover:border-[#F45B22] hover:text-[#F45B22]"
                   )}
                 >
                   {item}
@@ -175,17 +175,17 @@ export function RouteCommandBar({ className }: { className?: string }) {
           type="submit"
           disabled={!valid || start.isPending}
           className={cn(
-            "w-full h-[50px] rounded-[10px] flex items-center justify-center gap-2",
-            "text-xs font-bold uppercase tracking-wider text-white",
-            "bg-[#F45B22] hover:bg-[#D94A18] transition-colors",
+            "group w-full h-[52px] rounded-[10px] flex items-center justify-center gap-2",
+            "text-[13px] font-bold uppercase tracking-wider text-white",
+            "bg-[#F45B22] hover:bg-[#D94A18] active:scale-[0.99] transition-all duration-150 shadow-sm",
             "disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           )}
         >
           {start.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin text-white" />
+            <Loader2 className="h-4.5 w-4.5 animate-spin text-white" />
           ) : (
             <>
-              Build route <ArrowRight className="h-4 w-4" />
+              Build route <ArrowRight className="h-4.5 w-4.5 transition-transform duration-200 ease-out group-hover:translate-x-1" />
             </>
           )}
         </button>
@@ -199,8 +199,8 @@ export function RouteCommandBar({ className }: { className?: string }) {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden pt-1"
             >
-              <div className="flex items-start gap-2 p-2.5 rounded-md bg-[#FEF7EC] border border-[#FCE7C5] text-[11px] text-[#C77A16]">
-                <TriangleAlert className="h-3.5 w-3.5 text-[#C77A16] shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2 p-2.5 rounded-md bg-[#FEF7EC] border border-[#FCE7C5] text-[12px] text-[#C77A16]">
+                <TriangleAlert className="h-4 w-4 text-[#C77A16] shrink-0 mt-0.5" />
                 <span>
                   {error ? error.message : "No SERPAPI_KEY — live search unavailable. Try the demo."}
                 </span>
@@ -223,14 +223,14 @@ export function DemoButton({ className }: { className?: string }) {
       onClick={() => start.mutate({ ...DEMO_REQUEST, date: nextSaturday() })}
       disabled={start.isPending}
       className={cn(
-        "flex items-center gap-1.5 text-xs font-semibold text-[#151A23]",
-        "border border-[#E4E2DC] px-3.5 py-1.5 rounded-[8px] bg-white",
+        "flex items-center gap-1.5 text-xs md:text-[13px] font-semibold text-[#151A23]",
+        "border border-[#E4E2DC] px-4 py-2 rounded-[8px] bg-white shadow-sm",
         "hover:border-[#F45B22] hover:text-[#F45B22] transition-colors cursor-pointer",
         "disabled:opacity-40",
         className
       )}
     >
-      {start.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#F45B22]" />}
+      {start.isPending && <Loader2 className="h-4 w-4 animate-spin text-[#F45B22]" />}
       Delhi → Jaipur demo →
     </button>
   );

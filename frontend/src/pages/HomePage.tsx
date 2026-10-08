@@ -292,7 +292,7 @@ export default function HomePage() {
         LEFT (35%): Sits directly on #F8F7F3 background with whitespace
         RIGHT (65%): DOMINANT SPATIAL REAL MAP WITH FLOATING OVERLAYS
       */}
-      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] xl:grid-cols-[440px_1fr] border-b border-[#E4E2DC]">
+      <div className="grid grid-cols-1 lg:grid-cols-[440px_1fr] xl:grid-cols-[500px_1fr] border-b border-[#E4E2DC]">
 
         {/* ── LEFT PANEL: Editorial text & planning form ── */}
         <div className="flex flex-col justify-between p-6 md:p-8 bg-[#F8F7F3] border-r border-[#E4E2DC] space-y-6 lg:h-[calc(100vh-48px)] lg:overflow-y-auto scroll-thin">
@@ -302,7 +302,7 @@ export default function HomePage() {
             {/* Editorial Header */}
             <div>
               <span className="text-[10px] tracking-[0.14em] text-[#F45B22] uppercase mb-2 block font-bold">
-                ● SERPAPI INDIA HACKATHON · TRAVEL & LOCAL DISCOVERY
+                SERPAPI INDIA HACKATHON · TRAVEL & LOCAL DISCOVERY
               </span>
               <h1 className="font-display text-4xl lg:text-5xl font-bold tracking-[-0.045em] text-[#151A23] leading-[0.98] font-author">
                 Plan around<br />the moment.

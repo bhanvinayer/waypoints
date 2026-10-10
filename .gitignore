@@ -53,3 +53,5 @@ desktop.ini
 
 # ---------- Claude Code local state ----------
 .claude/settings.local.json
+
+.venv-mac

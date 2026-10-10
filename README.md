@@ -52,6 +52,12 @@ The only thing you need to add is your API keys (see below). Everything works wi
 
 ---
 
+## Demo video
+
+[![WAYPOINTS Demo](https://img.youtube.com/vi/8CUy1Rjsm0k/0.jpg)](https://youtu.be/8CUy1Rjsm0k)
+
+---
+
 ## Quick start
 
 **Prerequisites:** Node 18+ · Python 3.11+
